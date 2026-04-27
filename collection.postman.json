@@ -1,0 +1,982 @@
+{
+  "info": {
+    "name": "@ubyjerome/meta-manager",
+    "description": "Complete REST API collection for the meta-manager package.\n\nCollection variables (edit in Postman under the collection or in an Environment):\n  baseUrl  = http://localhost:3000\n  entity   = books  (the route prefix you mounted the entity on)\n  recordId = (paste a UUID after creating a record)\n  parentId = (paste a parent UUID for child-relation requests)",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "entity",
+      "value": "books",
+      "type": "string"
+    },
+    {
+      "key": "recordId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create",
+      "item": [
+        {
+          "name": "Create One",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "create"
+              ]
+            },
+            "description": "Create a new entity record.\n\nThe response includes an auto-generated `uuid` and `slug` (derived from `title_name`).\n\nRequired and optional fields depend on the `createSchema` Joi config passed when the entity was initialised. If no schema is configured all fields are accepted.\n\nReserved fields auto-populated by the package \u2014 do not send these:\n  uuid, slug, created_at, updated_at, deleted_at",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title_name\": \"Things Fall Apart\",\n  \"description\": \"A classic novel by Chinua Achebe\",\n  \"owned_by\": \"user-uuid-here\",\n  \"added_by\": \"user-uuid-here\",\n  \"created_by\": \"user-uuid-here\",\n  \"meta_key\": \"featured_book\",\n  \"meta_value\": \"true\",\n  \"extra_data\": [],\n  \"meta_data\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"Created\",\n  \"statusCode\": 201,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books created\"\n}"
+            },
+            {
+              "name": "400 Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"\\\"title_name\\\" is required\",\n  \"errorMessage\": \"\\\"title_name\\\" is required\"\n}"
+            },
+            {
+              "name": "409 Duplicate",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Conflict\",\n  \"statusCode\": 409,\n  \"data\": [],\n  \"message\": \"Duplicate entry\",\n  \"errorMessage\": \"E11000 duplicate key error collection: books index: slug_1\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Many",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/create/many",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "create",
+                "many"
+              ]
+            },
+            "description": "Insert multiple records in one request.\n\nAccepts either:\n  - A top-level JSON array: [{...}, {...}]\n  - An object with an items key: { \"items\": [{...}, {...}] }\n\nValidation runs on every item before any insert. If one item fails, the entire request is rejected. The error message identifies the failing index: Item 1: \"title_name\" is required",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"title_name\": \"Purple Hibiscus\",\n    \"owned_by\": \"user-uuid-here\"\n  },\n  {\n    \"title_name\": \"Half of a Yellow Sun\",\n    \"owned_by\": \"user-uuid-here\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"Created\",\n  \"statusCode\": 201,\n  \"data\": [\n    {\n      \"uuid\": \"uuid-1\",\n      \"title_name\": \"Purple Hibiscus\",\n      \"slug\": \"purple-hibiscus\"\n    },\n    {\n      \"uuid\": \"uuid-2\",\n      \"title_name\": \"Half of a Yellow Sun\",\n      \"slug\": \"half-of-a-yellow-sun\"\n    }\n  ],\n  \"message\": \"2 books records created\"\n}"
+            },
+            {
+              "name": "400 Item Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"Item 1: \\\"title_name\\\" is required\",\n  \"errorMessage\": \"Item 1: \\\"title_name\\\" is required\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Read",
+      "item": [
+        {
+          "name": "Get All (Paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/all?page=1&limit=20&sort=created_at&order=desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Records per page (default: 20, max: 500)"
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at",
+                  "description": "Field to sort by"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "asc or desc"
+                },
+                {
+                  "key": "fields",
+                  "value": "uuid,title_name,status,created_at",
+                  "description": "Comma-separated field projection",
+                  "disabled": true
+                },
+                {
+                  "key": "filter[status]",
+                  "value": "active",
+                  "description": "Filter by any field using filter[fieldName]=value",
+                  "disabled": true
+                },
+                {
+                  "key": "filter[owned_by]",
+                  "value": "user-uuid-here",
+                  "description": "Filter by owner",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve all records with full pagination, sorting, field projection, and arbitrary field filtering.\n\nPagination params:\n  page   - page number (default: 1)\n  limit  - records per page (default: 20, hard max: 500)\n  sort   - any document field name\n  order  - asc or desc\n\nField projection:\n  fields=uuid,title_name,status  (comma-separated)\n\nFiltering:\n  filter[fieldName]=value  \u2014 multiple filters are ANDed\n\nSoft-deleted records are always excluded."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [\n      {\n        \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n        \"title_name\": \"Things Fall Apart\",\n        \"slug\": \"things-fall-apart\",\n        \"description\": \"A classic novel by Chinua Achebe\",\n        \"status\": \"active\",\n        \"extra_data\": [],\n        \"meta_data\": [],\n        \"deleted_at\": null,\n        \"created_at\": \"2026-04-27T10:00:00.000Z\",\n        \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 42,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 3,\n      \"hasNext\": true,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"books records retrieved\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}"
+              ],
+              "query": [
+                {
+                  "key": "fields",
+                  "value": "uuid,title_name,description,status",
+                  "description": "Comma-separated field projection",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch a single record by its uuid or MongoDB _id.\n\nAccepts an optional ?fields= projection to return only specific fields.\n\nReturns 404 if the record does not exist or has been soft-deleted."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books retrieved\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get By ID with Children",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}/children?includeChildren=true&childDepth=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}",
+                "children"
+              ],
+              "query": [
+                {
+                  "key": "includeChildren",
+                  "value": "true",
+                  "description": "true = all, or comma-separated aliases e.g. chapters,reviews"
+                },
+                {
+                  "key": "childDepth",
+                  "value": "1",
+                  "description": "Recursion depth (1 = immediate children, 2 = grandchildren)"
+                },
+                {
+                  "key": "childPage[chapters]",
+                  "value": "1",
+                  "description": "Page for the 'chapters' child set",
+                  "disabled": true
+                },
+                {
+                  "key": "childLimit[chapters]",
+                  "value": "10",
+                  "description": "Page size for the 'chapters' child set",
+                  "disabled": true
+                },
+                {
+                  "key": "childSort[chapters]",
+                  "value": "created_at",
+                  "description": "Sort field for the 'chapters' child set",
+                  "disabled": true
+                },
+                {
+                  "key": "childOrder[chapters]",
+                  "value": "asc",
+                  "description": "Sort direction for the 'chapters' child set",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Fetch a record and embed its registered child entities as paginated sub-collections.\n\nincludeChildren:\n  true              - embed all registered children\n  chapters,reviews  - embed specific aliases only\n\nchildDepth:\n  1 (default) - immediate children only\n  2           - children and their children (grandchildren)\n\nPer-child pagination (replace 'chapters' with the actual alias):\n  childPage[chapters]=2\n  childLimit[chapters]=5\n  childSort[chapters]=created_at\n  childOrder[chapters]=asc\n\nEach child key in the response is a full paginated result object."
+          },
+          "response": [
+            {
+              "name": "200 OK with children",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"chapters\": {\n      \"data\": [\n        {\n          \"uuid\": \"chapter-uuid-1\",\n          \"title_name\": \"Chapter One\",\n          \"chapterNumber\": 1\n        }\n      ],\n      \"pagination\": {\n        \"total\": 12,\n        \"page\": 1,\n        \"limit\": 10,\n        \"totalPages\": 2,\n        \"hasNext\": true,\n        \"hasPrev\": false\n      }\n    }\n  },\n  \"message\": \"books with children retrieved\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Find By Field",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/by/status/active?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "by",
+                "status",
+                "active"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Records per page"
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at",
+                  "description": "Sort field",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Sort direction",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Find all records where :field equals :value.\n\nChange status/active in the path to any field/value pair:\n  /by/owned_by/user-uuid-here\n  /by/meta_key/featured_book\n  /by/libraryId/lib-uuid-here\n\nReturns a full paginated result. All standard pagination and sort params apply."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [],\n    \"pagination\": {\n      \"total\": 0,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 1,\n      \"hasNext\": false,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"Records where status=active\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/search?q=chinua&searchFields=title_name,description",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "chinua",
+                  "description": "Search term (required)"
+                },
+                {
+                  "key": "searchFields",
+                  "value": "title_name,description",
+                  "description": "Comma-separated fields to search"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Records per page",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Search records by a query string.\n\nq is required \u2014 returns 400 if absent.\n\nsearchFields overrides the entity's searchableFields config for this request.\n\nIf no searchFields are provided and none are configured on the entity, MongoDB full-text search ($text) is used \u2014 requires a text index.\n\nSearch is case-insensitive regex when field names are provided.\n\nAll standard pagination params apply."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [\n      {\n        \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n        \"title_name\": \"Things Fall Apart\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 1,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 1,\n      \"hasNext\": false,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"Search results for \\\"chinua\\\"\"\n}"
+            },
+            {
+              "name": "400 Missing q",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"Search query param 'q' is required\",\n  \"errorMessage\": \"Search query param 'q' is required\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Count",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "count"
+              ],
+              "query": [
+                {
+                  "key": "filter[status]",
+                  "value": "active",
+                  "description": "Filter by status",
+                  "disabled": true
+                },
+                {
+                  "key": "filter[owned_by]",
+                  "value": "user-uuid-here",
+                  "description": "Filter by owner",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Return the total count of non-deleted records, with optional filtering.\n\nSupports the same filter[field]=value params as GET /all.\nSoft-deleted records are excluded."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"count\": 42\n  },\n  \"message\": \"Count retrieved\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Exists",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/exists/slug/things-fall-apart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "exists",
+                "slug",
+                "things-fall-apart"
+              ]
+            },
+            "description": "Check whether a record exists where :field equals :value.\n\nUseful for uniqueness checks before create:\n  /exists/slug/my-slug\n  /exists/isbn/978-0-435-90553-6\n\nAlways returns 200. Never 404. Data is { exists: true } or { exists: false }."
+          },
+          "response": [
+            {
+              "name": "200 Exists",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"exists\": true\n  },\n  \"message\": \"Existence check complete\"\n}"
+            },
+            {
+              "name": "200 Not Exists",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"exists\": false\n  },\n  \"message\": \"Existence check complete\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Update",
+      "item": [
+        {
+          "name": "Full Update (PUT)",
+          "request": {
+            "method": "PUT",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}"
+              ]
+            },
+            "description": "Update a record identified by uuid or _id.\n\nOnly fields included in the request body are changed \u2014 fields not sent retain their current values.\n\nIf title_name is changed, slug is automatically regenerated.\n\nValidation runs against the entity's updateSchema (all fields optional by default).\n\nLifecycle events fired:\n  update          - once, with the full diff\n  update.field    - once per each changed field key",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title_name\": \"Things Fall Apart (Revised Edition)\",\n  \"description\": \"Updated description\",\n  \"status\": \"active\",\n  \"updated_by\": \"admin-uuid-here\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart (Revised Edition)\",\n    \"slug\": \"things-fall-apart-revised-edition\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
+            },
+            {
+              "name": "400 Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"\\\"status\\\" must be one of [active, inactive, archived]\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Partial Update (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}"
+              ]
+            },
+            "description": "Partial update \u2014 identical to PUT at the data layer. Only fields in the body are changed.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"inactive\",\n  \"updated_by\": \"admin-uuid-here\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"inactive\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Single Field",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}/field/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}",
+                "field",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Update a single named field. The field name is in the URL path.\n\nRequest body must be: { \"value\": <newValue> }\n\nSupports dot-notation for nested fields:\n  /field/status                     top-level field\n  /field/extra_data.0.tokenName     first element of extra_data array\n  /field/meta_data.0.price          nested object field\n\nThis is the recommended way to update a specific nested key without sending the entire document."
+          },
+          "response": [
+            {
+              "name": "200 Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books field \\\"status\\\" updated\"\n}"
+            },
+            {
+              "name": "400 Missing value",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"Request body must contain { value }\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Nested Array Field (dot-notation)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}/field/extra_data.0.tokenName",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}",
+                "field",
+                "extra_data.0.tokenName"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"Zugacoin V2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Example of dot-notation targeting the tokenName property inside the first element of extra_data.\n\nThis fires:\n  update.extra_data             (field-level event)\n  update.extra_data[*]          (wildcard array event)\n  update.extra_data[tokenName].Zugacoin V2  (named element event, if subscribed)"
+          },
+          "response": [
+            {
+              "name": "200 Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"extra_data\": [\n      {\n        \"tokenName\": \"Zugacoin V2\",\n        \"symbol\": \"SZCB\"\n      }\n    ]\n  },\n  \"message\": \"books field \\\"extra_data.0.tokenName\\\" updated\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Delete & Restore",
+      "item": [
+        {
+          "name": "Soft Delete",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}"
+              ]
+            },
+            "description": "Soft-delete a record by setting deleted_at to now and status to archived.\n\nSoft-deleted records are invisible to all read endpoints (GET /all, GET /:id, search, findBy, count) but remain in the collection.\n\nUse POST /:id/restore to reverse this.\n\nThe delete lifecycle event fires with the document's final state as whatWas."
+          },
+          "response": [
+            {
+              "name": "200 Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": null,\n  \"message\": \"books deleted\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Hard Delete",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}?hard=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}"
+              ],
+              "query": [
+                {
+                  "key": "hard",
+                  "value": "true",
+                  "description": "Permanently removes the document. Cannot be undone."
+                }
+              ]
+            },
+            "description": "Permanently removes the document from the MongoDB collection. Cannot be undone.\n\nRequires ?hard=true. Without it the request performs a soft delete."
+          },
+          "response": [
+            {
+              "name": "200 Hard Deleted",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": null,\n  \"message\": \"books deleted\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Restore",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}",
+                "restore"
+              ]
+            },
+            "description": "Restore a soft-deleted record.\n\nSets deleted_at back to null and status back to active.\nThe record becomes visible to all read endpoints again.\n\nThe restore lifecycle event fires with the restored document state."
+          },
+          "response": [
+            {
+              "name": "200 Restored",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books restored\"\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Not Found\",\n  \"statusCode\": 404,\n  \"data\": [],\n  \"message\": \"books not found\",\n  \"errorMessage\": \"notFound\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
