@@ -1,4 +1,4 @@
-# @ubyjerome/meta-manager
+# Meta Manager
 
 MongoDB entity manager for Express. Define an entity once, get a full REST API, typed service layer, lifecycle events, interceptors, and deep parent/child relations, with no repetitive boilerplate.
 
