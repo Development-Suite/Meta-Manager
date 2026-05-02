@@ -7,6 +7,7 @@ import {
   IMetaService,
   EventPath,
   EventCallback,
+  CallbackForEvent,
   InterceptorAction,
   InterceptorCallback,
 } from "../types";
@@ -65,7 +66,7 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
    * booksEntity.trigger(["update.extra_data[*]"], (whatWas, whatIs, book) => { ... });
    * booksEntity.trigger(["update.extra_data[tokenName].Zugacoin"], (whatWas, whatIs, book) => { ... });
    */
-  trigger(events: EventPath<T>[], callback: EventCallback<T>): void {
+  trigger<E extends EventPath<T>>(events: E[], callback: CallbackForEvent<T, E>): void {
     this.events.on(events as string[], callback as EventCallback<any>);
   }
 

@@ -88,7 +88,45 @@ type DotPaths<T, Depth extends number = 2> = Depth extends 0 ? never : T extends
 type UpdatePaths<T> = DotPaths<Omit<T, keyof Document>, 2>;
 export type EventPath<T = Record<string, unknown>> = "create" | "update" | "delete" | "restore" | `update.${string & UpdatePaths<T>}`;
 export type EventType = string;
+/**
+ * Callback for "update" and "update.*" events.
+ * Both whatWas and whatIs are guaranteed non-null — an update always has a
+ * before state and an after state. They are Partial<T> because only the
+ * changed fields are present in the diff object, not the full document.
+ */
+export type UpdateEventCallback<T = Record<string, unknown>> = (whatWas: Partial<T>, whatIs: Partial<T>, entity: T) => void | Promise<void>;
+/**
+ * Callback for "create" events.
+ * whatWas is null (nothing existed before). whatIs is null (unused for create).
+ * The full created document is in entity.
+ */
+export type CreateEventCallback<T = Record<string, unknown>> = (whatWas: null, whatIs: null, entity: T) => void | Promise<void>;
+/**
+ * Callback for "delete" events.
+ * whatIs is null (nothing exists after deletion). whatWas carries the last state.
+ */
+export type DeleteEventCallback<T = Record<string, unknown>> = (whatWas: Partial<T>, whatIs: null, entity: T) => void | Promise<void>;
+/**
+ * Callback for "restore" events.
+ * whatWas is null. The restored document is in entity.
+ */
+export type RestoreEventCallback<T = Record<string, unknown>> = (whatWas: null, whatIs: null, entity: T) => void | Promise<void>;
+/**
+ * Generic fallback used internally and for JS consumers.
+ * Preserves the nullable union when the event category cannot be inferred statically.
+ */
 export type EventCallback<T = Record<string, unknown>> = (whatWas: Partial<T> | null, whatIs: Partial<T> | null, entity: T) => void | Promise<void>;
+/**
+ * Resolves the correctly-typed callback for a given event path string E.
+ *
+ *   "create"          -> CreateEventCallback<T>   (whatWas: null, whatIs: null)
+ *   "delete"          -> DeleteEventCallback<T>   (whatWas: Partial<T>, whatIs: null)
+ *   "restore"         -> RestoreEventCallback<T>  (whatWas: null, whatIs: null)
+ *   "update"          -> UpdateEventCallback<T>   (whatWas: Partial<T>, whatIs: Partial<T>)
+ *   "update.field"    -> UpdateEventCallback<T>   (whatWas: Partial<T>, whatIs: Partial<T>)
+ *   "update.arr[*]"   -> UpdateEventCallback<T>   (whatWas: Partial<T>, whatIs: Partial<T>)
+ */
+export type CallbackForEvent<T, E extends string> = E extends "create" ? CreateEventCallback<T> : E extends "delete" ? DeleteEventCallback<T> : E extends "restore" ? RestoreEventCallback<T> : E extends "update" | `update.${string}` ? UpdateEventCallback<T> : EventCallback<T>;
 export interface EventSubscription {
     types: string[];
     callback: EventCallback<any>;
@@ -172,7 +210,17 @@ export interface IMetaEntity<T extends BaseEntityDocument = BaseEntityDocument> 
     readonly model: Model<T>;
     readonly service: IMetaService<T>;
     readonly controller: import("express").Router;
-    trigger(events: EventPath<T>[], callback: EventCallback<T>): void;
+    /**
+     * Subscribe to entity lifecycle events.
+     *
+     * TypeScript resolves the callback signature automatically based on the event string:
+     *   "create"       -> (null, null, entity)
+     *   "delete"       -> (whatWas, null, entity)
+     *   "restore"      -> (null, null, entity)
+     *   "update"       -> (whatWas, whatIs, entity)  -- both guaranteed non-null
+     *   "update.field" -> (whatWas, whatIs, entity)  -- both guaranteed non-null
+     */
+    trigger<E extends EventPath<T>>(events: E[], callback: CallbackForEvent<T, E>): void;
     intercept(action: InterceptorAction | InterceptorAction[], callback: InterceptorCallback): void;
 }
 export {};

@@ -1,6 +1,6 @@
 import { Model } from "mongoose";
 import { Router } from "express";
-import { BaseEntityDocument, MetaEntityOptions, IMetaEntity, IMetaService, EventPath, EventCallback, InterceptorAction, InterceptorCallback } from "../types";
+import { BaseEntityDocument, MetaEntityOptions, IMetaEntity, IMetaService, EventPath, CallbackForEvent, InterceptorAction, InterceptorCallback } from "../types";
 export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument> implements IMetaEntity<T> {
     readonly entityName: string;
     readonly model: Model<T>;
@@ -20,7 +20,7 @@ export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocumen
      * booksEntity.trigger(["update.extra_data[*]"], (whatWas, whatIs, book) => { ... });
      * booksEntity.trigger(["update.extra_data[tokenName].Zugacoin"], (whatWas, whatIs, book) => { ... });
      */
-    trigger(events: EventPath<T>[], callback: EventCallback<T>): void;
+    trigger<E extends EventPath<T>>(events: E[], callback: CallbackForEvent<T, E>): void;
     /**
      * Register middleware that runs before the specified controller action(s).
      *
