@@ -1,0 +1,113 @@
+{
+  "events": {
+    "intro": "Lifecycle events fire after every mutation. Callbacks are async-safe. Errors inside a callback are caught and logged without interrupting the HTTP response or service call.",
+    "types": [
+      { "pattern": "create",                                  "fires": "After a new document is inserted.",                                        "whatWas": "null",            "whatIs": "null",           "entity": "The full created document." },
+      { "pattern": "update",                                  "fires": "After any field on a document changes.",                                    "whatWas": "Partial<T>",      "whatIs": "Partial<T>",     "entity": "The full updated document." },
+      { "pattern": "update.fieldName",                        "fires": "After a specific named field changes. One event per changed key.",          "whatWas": "Partial<T>",      "whatIs": "Partial<T>",     "entity": "The full updated document." },
+      { "pattern": "update.arrayField[*]",                    "fires": "When any element in an array field changes.",                               "whatWas": "Partial<T>",      "whatIs": "Partial<T>",     "entity": "The full updated document." },
+      { "pattern": "update.arrayField[keyField].keyValue",    "fires": "When the array element whose keyField === keyValue changes.",               "whatWas": "Partial<T>",      "whatIs": "Partial<T>",     "entity": "The full updated document." },
+      { "pattern": "delete",                                  "fires": "After a document is soft or hard deleted.",                                  "whatWas": "Partial<T>",      "whatIs": "null",           "entity": "The document's last state." },
+      { "pattern": "restore",                                 "fires": "After a soft-deleted document is restored.",                                 "whatWas": "null",            "whatIs": "null",           "entity": "The restored document." }
+    ],
+    "nullability": "TypeScript resolves callback argument nullability from the event string at compile time. update and update.* callbacks receive non-null Partial<T> for both whatWas and whatIs. create and restore callbacks receive null for both. delete callbacks receive non-null whatWas and null for whatIs.",
+    "examples": [
+      {
+        "label": "Send email on status change",
+        "code": "jobEntity.trigger([\"update.job_status\"], async (whatWas, whatIs, job) => {\n  if (whatWas.job_status === whatIs.job_status) return\n\n  const host = await UserService.getUserById(job.host_id)\n  if (!host?.email) return\n\n  await Mail.sendOne(\n    host.email,\n    `Job updated - ${whatIs.job_status}`,\n    buildEmail(host.firstName, job.title_name, whatIs.job_status)\n  )\n})"
+      },
+      {
+        "label": "Watch a specific token in extra_data",
+        "code": "settingsEntity.trigger([\"update.extra_data[tokenName].Zugacoin\"], (whatWas, whatIs, setting) => {\n  console.log(\"Zugacoin config changed\", { from: whatWas.extra_data, to: whatIs.extra_data })\n})"
+      },
+      {
+        "label": "Rebuild search index on create or update",
+        "code": "booksEntity.trigger([\"create\", \"update\"], (_ww, _wi, book) => {\n  searchIndex.upsert(book.uuid, {\n    title: book.title_name,\n    description: book.description\n  })\n})"
+      },
+      {
+        "label": "Audit log on delete",
+        "code": "booksEntity.trigger([\"delete\"], (whatWas, _wi, book) => {\n  AuditLog.record({\n    action: \"delete\",\n    entity: \"books\",\n    entityId: book.uuid,\n    snapshot: whatWas\n  })\n})"
+      }
+    ]
+  },
+  "interceptors": {
+    "intro": "Interceptors are standard Express (req, res, next) middleware functions mounted per action type. They run before the controller handler and can block, modify, or pass through the request.",
+    "actions": ["create", "read", "update", "delete", "all"],
+    "notes": [
+      "Multiple interceptors for the same action run in registration order.",
+      "The all action type matches every request regardless of method.",
+      "Interceptors may be async.",
+      "Each interceptor must call next() to continue or send a response to halt."
+    ],
+    "examples": [
+      {
+        "label": "RBAC on delete",
+        "code": "booksEntity.intercept(\"delete\", (req, res, next) => {\n  if (!req.user?.isAdmin) {\n    return res.status(403).json({ message: \"Forbidden\" })\n  }\n  next()\n})"
+      },
+      {
+        "label": "Scope reads to the current user",
+        "code": "booksEntity.intercept(\"read\", (req, res, next) => {\n  req.query[\"filter[owned_by]\"] = req.user.uuid\n  next()\n})"
+      },
+      {
+        "label": "Inject updated_by on every write",
+        "code": "booksEntity.intercept([\"create\", \"update\"], (req, res, next) => {\n  req.body.updated_by = req.user?.uuid\n  next()\n})"
+      },
+      {
+        "label": "Request logging",
+        "code": "booksEntity.intercept(\"all\", (req, res, next) => {\n  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`)\n  next()\n})"
+      }
+    ]
+  },
+  "nested": {
+    "intro": "Nested operations target nested objects and arrays using MongoDB operators directly, bypassing the shallow Object.assign merge used by the standard update method. Every object inside an array receives an auto-injected _mmid (a stable UUID) that gives each item an addressable identity without requiring a sub-schema.",
+    "mmid": "_mmid is injected automatically on save and on document init. It persists across updates. Use it as the stable identity key for patch_item and pull_id instead of array index, which shifts when items are added or removed.",
+    "operations": [
+      { "name": "set",        "operator": "$set",       "value": "Any value.",                                                    "example": "{ field: \"personal_information.email\", operation: \"set\", value: \"new@email.com\" }" },
+      { "name": "unset",      "operator": "$unset",     "value": "Omit or pass null.",                                            "example": "{ field: \"personal_information.email\", operation: \"unset\" }" },
+      { "name": "push",       "operator": "$push",      "value": "A single item to append.",                                     "example": "{ field: \"tags\", operation: \"push\", value: \"verified\" }" },
+      { "name": "push_many",  "operator": "$push $each","value": "An array of items to append.",                                 "example": "{ field: \"tags\", operation: \"push_many\", value: [\"a\", \"b\"] }" },
+      { "name": "pull",       "operator": "$pull",      "value": "A filter object. Items matching the filter are removed.",      "example": "{ field: \"tags\", operation: \"pull\", value: { name: \"Ironing Service\" } }" },
+      { "name": "pull_id",    "operator": "$pull",      "value": "The _mmid string of the item to remove.",                     "example": "{ field: \"services\", operation: \"pull_id\", value: \"mmid-laundry\" }" },
+      { "name": "patch_item", "operator": "$set + arrayFilters", "value": "{ _mmid: string, ...fieldsToUpdate }. _mmid is required.", "example": "{ field: \"services\", operation: \"patch_item\", value: { _mmid: \"mmid-cleaning\", category: \"Premium Cleaning\" } }" },
+      { "name": "add_to_set", "operator": "$addToSet",  "value": "A single value. Appended only if not already present.",        "example": "{ field: \"tags\", operation: \"add_to_set\", value: \"laundry\" }" },
+      { "name": "increment",  "operator": "$inc",       "value": "A number. Use negative values to decrement.",                  "example": "{ field: \"rating_average\", operation: \"increment\", value: 0.5 }" },
+      { "name": "rename",     "operator": "$rename",    "value": "The new field name string.",                                   "example": "{ field: \"old_field\", operation: \"rename\", value: \"new_field\" }" }
+    ]
+  },
+  "relations": {
+    "intro": "Entities declare relations to other entities at initialisation time. Relations enforce foreign keys at the schema level and enable automatic population at query time.",
+    "types": [
+      {
+        "name": "parent",
+        "summary": "Declares that this entity belongs to another. A required foreign key field is injected into the schema.",
+        "example": "const chaptersEntity = new MetaEntity(\"chapters\", {\n  parents: [{\n    entity: () => booksEntity,\n    type: \"parent\",\n    foreignKey: \"bookId\"\n  }]\n});\n\n// bookId is now required on create\nawait chaptersEntity.service.create({\n  title_name: \"Chapter One\",\n  chapterNumber: 1,\n  bookId: book.uuid\n});"
+      },
+      {
+        "name": "children",
+        "summary": "Declares which entities are children of this one. Child results are populated on withChildren calls as paginated sub-collections.",
+        "example": "const booksEntity = new MetaEntity(\"books\", {\n  children: [{\n    entity: () => chaptersEntity,\n    foreignKey: \"bookId\",\n    alias: \"chapters\"\n  }]\n});\n\n// Fetch book with paginated chapters\nconst book = await booksEntity.service.withChildren(id, {\n  includeChildren: [\"chapters\"],\n  childPagination: {\n    chapters: { page: 1, limit: 10 }\n  }\n});"
+      },
+      {
+        "name": "sister",
+        "summary": "Declares a peer relation. A required foreign key is injected. Sister entities do not nest inside each other but their FK constraint ensures data consistency.",
+        "example": "const profileEntity = new MetaEntity(\"profiles\", {\n  sisters: [{\n    entity: () => userEntity,\n    type: \"sister\",\n    foreignKey: \"userId\"\n  }]\n});\n\n// userId is required on create\nawait profileEntity.service.create({\n  bio: \"Developer\",\n  userId: user.uuid\n});"
+      }
+    ]
+  },
+  "validation": {
+    "intro": "Validation uses Joi schemas defined at entity initialisation. Reserved fields (uuid, slug, created_at, updated_at, deleted_at) are stripped automatically and never validated from user input.",
+    "createSchema": "Joi schema map for fields accepted on create. Required constraints are enforced.",
+    "updateSchema": "Joi schema map for fields accepted on update. If omitted, defaults to createSchema with all keys set to optional automatically.",
+    "options": "createValidationOptions and updateValidationOptions accept any Joi.ValidationOptions. The default is { abortEarly: false, allowUnknown: true }.",
+    "skipValidation": "Pass skipValidation: true to CreateOptions or UpdateOptions to bypass Joi entirely for that call. Useful for seeding or internal migrations.",
+    "programmatic": "Call entity.service.validate(data, 'create') or entity.service.validate(data, 'update') to run validation without inserting. Returns { valid: boolean, errors: string[] }.",
+    "example": "const profileEntity = new MetaEntity(\"profiles\", {\n  createSchema: {\n    userId:   Joi.string().required(),\n    bio:      Joi.string().max(500).optional(),\n    location: Joi.string().optional(),\n    services_offered: Joi.array().items(Joi.string()).optional()\n  },\n  // updateSchema auto-derived: all fields optional\n  createValidationOptions: { abortEarly: false, allowUnknown: true }\n});\n\n// Programmatic check\nconst result = profileService.validate({ bio: \"Developer\" }, \"create\");\n// result.valid => false\n// result.errors => ['\"userId\" is required']"
+  },
+  "typescript": {
+    "intro": "The package ships complete .d.ts declarations. All generics are optional - the package works in plain JavaScript without any type annotations.",
+    "extending": "Extend BaseEntityDocument to type your additional fields. Pass the interface as the generic to MetaEntity.",
+    "eventPaths": "EventPath<T> produces a union of all valid event strings including typed dot-paths under update.*. TypeScript's IDE autocomplete surfaces these as suggestions.",
+    "callbackTypes": "CallbackForEvent<T, E> resolves the correct callback signature for a given event string E. update.* callbacks receive non-null Partial<T> for both whatWas and whatIs. create and restore receive null. delete receives non-null whatWas and null whatIs.",
+    "example": "import { MetaEntity, BaseEntityDocument } from \"@ubyjerome/meta-manager\";\nimport Joi from \"joi\";\n\ninterface BookDocument extends BaseEntityDocument {\n  isbn: string;\n  pageCount: number;\n  libraryId: string;\n}\n\nconst booksEntity = new MetaEntity<BookDocument>(\"books\", {\n  createSchema: {\n    title_name:  Joi.string().required(),\n    isbn:        Joi.string().optional(),\n    pageCount:   Joi.number().min(0).optional(),\n    libraryId:   Joi.string().required()\n  }\n});\n\n// service is fully typed as IMetaService<BookDocument>\nconst book = await booksEntity.service.findById(\"uuid\");\n// book is BookDocument | null\n\n// trigger is typed - IDE suggests valid event paths\nbooksEntity.trigger([\"update.isbn\"], (whatWas, whatIs, book) => {\n  // whatWas: Partial<BookDocument>  (non-null guaranteed)\n  // whatIs:  Partial<BookDocument>  (non-null guaranteed)\n  // book:    BookDocument\n});"
+  }
+}

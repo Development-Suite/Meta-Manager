@@ -11,9 +11,11 @@ import {
   InterceptorAction,
   InterceptorCallback,
 } from "../types";
+import { NestedOpPayload, NestedOpResult } from "../types/nestedOps";
 import { MetaService } from "./MetaService";
 import { MetaController } from "./MetaController";
 import { MetaEventEmitter } from "./EventEmitter";
+import { NestedOpsService } from "./NestedOpsService";
 import { buildSchema } from "./SchemaBuilder";
 
 export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
@@ -27,6 +29,7 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
   private readonly events: MetaEventEmitter;
   private readonly _controller: MetaController<T>;
   private readonly options: MetaEntityOptions;
+  readonly nestedOps: NestedOpsService<T>;
 
   constructor(name: string, options: MetaEntityOptions = {}) {
     this.entityName = name;
@@ -43,7 +46,8 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
 
     this.events = new MetaEventEmitter();
     this.service = new MetaService<T>(this.model, options, this.events, name);
-    this._controller = new MetaController<T>(this.service, name, options);
+    this.nestedOps = new NestedOpsService<T>(this.model, this.events);
+    this._controller = new MetaController<T>(this.service, this.nestedOps, name, options);
     this.controller = this._controller.router;
   }
 
@@ -66,6 +70,28 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
    * booksEntity.trigger(["update.extra_data[*]"], (whatWas, whatIs, book) => { ... });
    * booksEntity.trigger(["update.extra_data[tokenName].Zugacoin"], (whatWas, whatIs, book) => { ... });
    */
+  /**
+   * Apply a single nested operation directly via the service layer (no HTTP).
+   *
+   * @example
+   * await profileEntity.nested(id, {
+   *   field: "services",
+   *   operation: "patch_item",
+   *   value: { _mmid: "abc123", "sub_services.0.basket_rate": 4000 }
+   * });
+   */
+  async nested(id: string, payload: NestedOpPayload): Promise<NestedOpResult<T>> {
+    return this.nestedOps.apply(id, payload);
+  }
+
+  /**
+   * Apply multiple nested operations in one call (batched into as few DB
+   * round-trips as possible).
+   */
+  async nestedBatch(id: string, payloads: NestedOpPayload[]): Promise<NestedOpResult<T>> {
+    return this.nestedOps.applyMany(id, payloads);
+  }
+
   trigger<E extends EventPath<T>>(events: E[], callback: CallbackForEvent<T, E>): void {
     this.events.on(events as string[], callback as EventCallback<any>);
   }

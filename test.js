@@ -64,6 +64,30 @@ function matchesFilter(doc, filter) {
   return true;
 }
 
+function getNestedValue(obj, path) {
+  return path.split(".").reduce((cur, key) => (cur == null ? undefined : cur[key]), obj);
+}
+
+function setNestedValue(obj, path, value) {
+  const parts = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (cur[parts[i]] == null) cur[parts[i]] = {};
+    cur = cur[parts[i]];
+  }
+  cur[parts[parts.length - 1]] = value;
+}
+
+function unsetNestedValue(obj, path) {
+  const parts = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (cur[parts[i]] == null) return;
+    cur = cur[parts[i]];
+  }
+  delete cur[parts[parts.length - 1]];
+}
+
 function buildMockModel(name) {
   const col = getCollection(name);
 
@@ -109,6 +133,116 @@ function buildMockModel(name) {
 
     async countDocuments(filter = {}) {
       return col.filter(d => matchesFilter(d, filter)).length;
+    },
+
+    async updateOne(filter = {}, update = {}, options = {}) {
+      const doc = col.find(d => matchesFilter(d, filter));
+      if (!doc) return { modifiedCount: 0 };
+
+      // $set
+      if (update.$set) {
+        for (const [path, val] of Object.entries(update.$set)) {
+          const arrayFilters = options.arrayFilters || [];
+          if (path.includes(".$[")) {
+            // arrayFilter positional: e.g. "services.$[elem].name"
+            const match = path.match(/^(.+?)\.\$\[(.+?)\]\.(.+)$/);
+            if (match) {
+              const [, arrPath, alias, subPath] = match;
+              const filterDef = arrayFilters.find(f => Object.keys(f)[0].startsWith(alias + "."));
+              if (filterDef) {
+                const [filterKey, filterVal] = Object.entries(filterDef)[0];
+                const subKey = filterKey.replace(alias + ".", "");
+                const arr = getNestedValue(doc, arrPath);
+                if (Array.isArray(arr)) {
+                  for (const item of arr) {
+                    if (item[subKey] === filterVal) {
+                      setNestedValue(item, subPath, val);
+                    }
+                  }
+                }
+              }
+            }
+          } else {
+            setNestedValue(doc, path, val);
+          }
+        }
+      }
+
+      // $unset
+      if (update.$unset) {
+        for (const path of Object.keys(update.$unset)) {
+          unsetNestedValue(doc, path);
+        }
+      }
+
+      // $push
+      if (update.$push) {
+        for (const [path, val] of Object.entries(update.$push)) {
+          const arr = getNestedValue(doc, path);
+          const items = val && typeof val === "object" && val.$each ? val.$each : [val];
+          if (Array.isArray(arr)) {
+            for (const item of items) {
+              if (item && typeof item === "object" && !item._mmid) {
+                const { v4: uuidv4 } = require("uuid");
+                item._mmid = uuidv4();
+              }
+              arr.push(item);
+            }
+          } else {
+            const newArr = items.map(item => {
+              if (item && typeof item === "object" && !item._mmid) {
+                const { v4: uuidv4 } = require("uuid");
+                item._mmid = uuidv4();
+              }
+              return item;
+            });
+            setNestedValue(doc, path, newArr);
+          }
+        }
+      }
+
+      // $pull
+      if (update.$pull) {
+        for (const [path, condition] of Object.entries(update.$pull)) {
+          const arr = getNestedValue(doc, path);
+          if (Array.isArray(arr)) {
+            const filtered = arr.filter(item => !matchesFilter(item, condition));
+            setNestedValue(doc, path, filtered);
+          }
+        }
+      }
+
+      // $addToSet
+      if (update.$addToSet) {
+        for (const [path, val] of Object.entries(update.$addToSet)) {
+          const arr = getNestedValue(doc, path);
+          if (Array.isArray(arr)) {
+            const exists = arr.some(i => JSON.stringify(i) === JSON.stringify(val));
+            if (!exists) arr.push(val);
+          } else {
+            setNestedValue(doc, path, [val]);
+          }
+        }
+      }
+
+      // $inc
+      if (update.$inc) {
+        for (const [path, val] of Object.entries(update.$inc)) {
+          const current = getNestedValue(doc, path) || 0;
+          setNestedValue(doc, path, current + val);
+        }
+      }
+
+      // $rename
+      if (update.$rename) {
+        for (const [oldPath, newPath] of Object.entries(update.$rename)) {
+          const val = getNestedValue(doc, oldPath);
+          unsetNestedValue(doc, oldPath);
+          setNestedValue(doc, newPath, val);
+        }
+      }
+
+      return { modifiedCount: 1 };
     },
   };
 
@@ -617,6 +751,225 @@ async function run() {
       testEntity._controller.applyInterceptors("delete", mock, mockRes, resolve);
     });
     assert(ran, "'all' interceptor should run for delete action");
+  });
+
+  // ── Nested Operations ────────────────────────────────────────────────────────
+
+  console.log("\nNested Operations");
+
+  // Set up a profile-like entity with nested structures
+  const profileEntity = new MetaEntity("Profile", {
+    additionalFields: {
+      userId: { type: String },
+      personal_information: { type: Object, default: {} },
+      services: { type: Array, default: [] },
+      rating_average: { type: Number, default: 0 },
+      tags: { type: Array, default: [] },
+    },
+  });
+
+  const profService = profileEntity.service;
+  const profNested = profileEntity.nestedOps;
+
+  let prof;
+  await test("create profile with nested data", async () => {
+    prof = await profService.create({
+      title_name: "Amaka Osei",
+      userId: "user_123",
+      personal_information: { first_name: "Amaka", last_name: "Osei", email: "amaka@test.com" },
+      services: [
+        {
+          _mmid: "mmid-laundry",
+          category: "Laundry",
+          sub_services: [
+            { _mmid: "mmid-wash", name: "Wash & Fold", basket_rate: 3500 },
+            { _mmid: "mmid-iron", name: "Ironing Service", hourly_rate: 1500 },
+          ],
+        },
+        {
+          _mmid: "mmid-cleaning",
+          category: "Cleaning",
+          sub_services: [
+            { _mmid: "mmid-deep", name: "Deep Cleaning", basket_rate: 15000 },
+            { _mmid: "mmid-regular", name: "Regular Cleaning", hourly_rate: 2000 },
+          ],
+        },
+      ],
+      rating_average: 0,
+      tags: ["laundry", "cleaning"],
+    }, { skipValidation: true });
+    assert(prof.uuid, "should have uuid");
+  });
+
+  await test("set - updates a nested object field", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "personal_information.email",
+      operation: "set",
+      value: "amaka.updated@test.com",
+    });
+    assert(result.updated, "should return updated doc");
+    assertEqual(result.updated.personal_information.email, "amaka.updated@test.com");
+  });
+
+  await test("set - updates a top-level field", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "rating_average",
+      operation: "set",
+      value: 4.5,
+    });
+    assertEqual(result.updated.rating_average, 4.5);
+  });
+
+  await test("increment - adds to a numeric field", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "rating_average",
+      operation: "increment",
+      value: 0.5,
+    });
+    assertEqual(result.updated.rating_average, 5);
+  });
+
+  await test("increment - subtracts with negative value", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "rating_average",
+      operation: "increment",
+      value: -1,
+    });
+    assertEqual(result.updated.rating_average, 4);
+  });
+
+  await test("push - appends an item to an array", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "tags",
+      operation: "push",
+      value: "gardening",
+    });
+    assert(Array.isArray(result.updated.tags));
+    assert(result.updated.tags.includes("gardening"), "gardening should be in tags");
+  });
+
+  await test("add_to_set - does not duplicate existing value", async () => {
+    const before = await profService.findById(prof.uuid);
+    const beforeLen = before.tags.length;
+    const result = await profNested.apply(prof.uuid, {
+      field: "tags",
+      operation: "add_to_set",
+      value: "laundry", // already present
+    });
+    assertEqual(result.updated.tags.length, beforeLen, "length should not change");
+  });
+
+  await test("add_to_set - adds new value", async () => {
+    const before = await profService.findById(prof.uuid);
+    const beforeLen = before.tags.length;
+    const result = await profNested.apply(prof.uuid, {
+      field: "tags",
+      operation: "add_to_set",
+      value: "car_wash",
+    });
+    assertEqual(result.updated.tags.length, beforeLen + 1);
+  });
+
+  await test("pull - removes array items matching condition", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "tags",
+      operation: "pull",
+      value: { "0": "car_wash" }, // mock pull by value for primitives
+    });
+    assert(result.updated, "should return doc");
+  });
+
+  await test("pull_id - removes array object by _mmid", async () => {
+    const before = await profService.findById(prof.uuid);
+    const beforeLen = before.services.length;
+    // Remove the Laundry service
+    const result = await profNested.apply(prof.uuid, {
+      field: "services",
+      operation: "pull_id",
+      value: "mmid-laundry",
+    });
+    assert(result.updated, "should return doc");
+    assert(result.updated.services.length < beforeLen, "services length should decrease");
+    assert(!result.updated.services.some(s => s._mmid === "mmid-laundry"), "laundry should be gone");
+  });
+
+  await test("push_many - appends multiple items", async () => {
+    const before = await profService.findById(prof.uuid);
+    const beforeLen = before.tags.length;
+    const result = await profNested.apply(prof.uuid, {
+      field: "tags",
+      operation: "push_many",
+      value: ["window_cleaning", "gardening_pro"],
+    });
+    assert(result.updated.tags.length >= beforeLen + 2);
+  });
+
+  await test("patch_item - updates fields on a specific array item by _mmid", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "services",
+      operation: "patch_item",
+      value: { _mmid: "mmid-cleaning", category: "Deep & Regular Cleaning" },
+    });
+    assert(result.updated, "should return doc");
+    const cleaning = result.updated.services.find(s => s._mmid === "mmid-cleaning");
+    assert(cleaning, "cleaning service should still exist");
+    assertEqual(cleaning.category, "Deep & Regular Cleaning");
+  });
+
+  await test("patch_item - throws if _mmid missing", async () => {
+    let threw = false;
+    try {
+      await profNested.apply(prof.uuid, {
+        field: "services",
+        operation: "patch_item",
+        value: { category: "No ID given" },
+      });
+    } catch (err) {
+      threw = true;
+      assert(err.message.includes("_mmid"));
+    }
+    assert(threw);
+  });
+
+  await test("unset - removes a nested field", async () => {
+    const result = await profNested.apply(prof.uuid, {
+      field: "personal_information.email",
+      operation: "unset",
+    });
+    assert(result.updated, "should return doc");
+    assert(!result.updated.personal_information?.email, "email should be gone");
+  });
+
+  await test("nestedBatch - applies multiple operations atomically", async () => {
+    const result = await profileEntity.nestedBatch(prof.uuid, [
+      { field: "rating_average",            operation: "set",       value: 3.5 },
+      { field: "tags",                      operation: "push",      value: "batch_tag" },
+      { field: "personal_information.phone",operation: "set",       value: "08012345678" },
+    ]);
+    assert(result.updated, "should return doc");
+    assertEqual(result.updated.rating_average, 3.5);
+    assert(result.updated.tags.includes("batch_tag"));
+    assertEqual(result.updated.personal_information.phone, "08012345678");
+  });
+
+  await test("nested update fires update event", async () => {
+    let fired = false;
+    profileEntity.trigger(["update.rating_average"], () => { fired = true; });
+    await profNested.apply(prof.uuid, { field: "rating_average", operation: "set", value: 2.0 });
+    await new Promise(r => setTimeout(r, 5));
+    assert(fired, "update.rating_average event should fire");
+    profileEntity.events.removeAll();
+  });
+
+  await test("unknown operation throws descriptive error", async () => {
+    let threw = false;
+    try {
+      await profNested.apply(prof.uuid, { field: "tags", operation: "explode", value: null });
+    } catch (err) {
+      threw = true;
+      assert(err.message.includes("Unknown nested operation"));
+    }
+    assert(threw);
   });
 
   // ── Summary ───────────────────────────────────────────────────────────────────

@@ -7,9 +7,11 @@ exports.MetaController = void 0;
 const express_1 = require("express");
 const serverResponse_1 = __importDefault(require("../utils/serverResponse"));
 const queryParser_1 = require("../utils/queryParser");
+const NestedOpsController_1 = require("./NestedOpsController");
 class MetaController {
-    constructor(service, entityName, options) {
+    constructor(service, nestedOpsService, entityName, options) {
         this.service = service;
+        this.nestedOpsService = nestedOpsService;
         this.entityName = entityName;
         this.options = options;
         this.interceptors = [];
@@ -56,6 +58,9 @@ class MetaController {
         r.patch("/:id/field/:field", this.intercept("update"), this.handleUpdateField.bind(this));
         r.delete("/:id", this.intercept("delete"), this.handleDelete.bind(this));
         r.post("/:id/restore", this.intercept("update"), this.handleRestore.bind(this));
+        // Nested operations
+        const nestedCtrl = new NestedOpsController_1.NestedOpsController(this.nestedOpsService, this.entityName, (action) => this.getInterceptors(action));
+        nestedCtrl.mount(r);
     }
     intercept(action) {
         return (req, res, next) => {

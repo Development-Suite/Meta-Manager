@@ -8,6 +8,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const MetaService_1 = require("./MetaService");
 const MetaController_1 = require("./MetaController");
 const EventEmitter_1 = require("./EventEmitter");
+const NestedOpsService_1 = require("./NestedOpsService");
 const SchemaBuilder_1 = require("./SchemaBuilder");
 class MetaEntity {
     constructor(name, options = {}) {
@@ -21,7 +22,8 @@ class MetaEntity {
                 mongoose_1.default.model(name, schema, collectionName);
         this.events = new EventEmitter_1.MetaEventEmitter();
         this.service = new MetaService_1.MetaService(this.model, options, this.events, name);
-        this._controller = new MetaController_1.MetaController(this.service, name, options);
+        this.nestedOps = new NestedOpsService_1.NestedOpsService(this.model, this.events);
+        this._controller = new MetaController_1.MetaController(this.service, this.nestedOps, name, options);
         this.controller = this._controller.router;
     }
     assertMongooseConnection() {
@@ -40,6 +42,26 @@ class MetaEntity {
      * booksEntity.trigger(["update.extra_data[*]"], (whatWas, whatIs, book) => { ... });
      * booksEntity.trigger(["update.extra_data[tokenName].Zugacoin"], (whatWas, whatIs, book) => { ... });
      */
+    /**
+     * Apply a single nested operation directly via the service layer (no HTTP).
+     *
+     * @example
+     * await profileEntity.nested(id, {
+     *   field: "services",
+     *   operation: "patch_item",
+     *   value: { _mmid: "abc123", "sub_services.0.basket_rate": 4000 }
+     * });
+     */
+    async nested(id, payload) {
+        return this.nestedOps.apply(id, payload);
+    }
+    /**
+     * Apply multiple nested operations in one call (batched into as few DB
+     * round-trips as possible).
+     */
+    async nestedBatch(id, payloads) {
+        return this.nestedOps.applyMany(id, payloads);
+    }
     trigger(events, callback) {
         this.events.on(events, callback);
     }

@@ -10,6 +10,8 @@ import {
 import { IMetaService, BaseEntityDocument } from "../types";
 import serverResponse from "../utils/serverResponse";
 import { parseQueryOptions } from "../utils/queryParser";
+import { NestedOpsService } from "./NestedOpsService";
+import { NestedOpsController } from "./NestedOpsController";
 
 export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   readonly router: Router;
@@ -17,6 +19,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
 
   constructor(
     private readonly service: IMetaService<T>,
+    private readonly nestedOpsService: NestedOpsService<T>,
     private readonly entityName: string,
     private readonly options: MetaEntityOptions
   ) {
@@ -75,6 +78,14 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     r.patch("/:id/field/:field", this.intercept("update"), this.handleUpdateField.bind(this));
     r.delete("/:id", this.intercept("delete"), this.handleDelete.bind(this));
     r.post("/:id/restore", this.intercept("update"), this.handleRestore.bind(this));
+
+    // Nested operations
+    const nestedCtrl = new NestedOpsController<T>(
+      this.nestedOpsService,
+      this.entityName,
+      (action) => this.getInterceptors(action as any)
+    );
+    nestedCtrl.mount(r);
   }
 
   private intercept(action: InterceptorAction) {

@@ -1,0 +1,324 @@
+{
+  "baseNote": "All endpoints are mounted at the path you pass to app.use(). The examples below use /books as the prefix.",
+  "groups": [
+    {
+      "id": "create",
+      "label": "Create",
+      "endpoints": [
+        {
+          "id": "create-one",
+          "method": "POST",
+          "path": "/create",
+          "summary": "Create a single record.",
+          "description": "Inserts one document. Auto-generates uuid and slug (from title_name). Runs Joi createSchema validation before insert. Reserved fields (uuid, slug, created_at, updated_at, deleted_at) must not be sent.",
+          "params": [],
+          "query": [],
+          "body": [
+            { "field": "title_name",   "type": "string",  "required": false, "note": "If present, slug is auto-generated from it." },
+            { "field": "description",  "type": "string",  "required": false, "note": "" },
+            { "field": "owned_by",     "type": "string",  "required": false, "note": "UUID of the owning user or entity." },
+            { "field": "extra_data",   "type": "any[]",   "required": false, "note": "Schema-less array. Accepts anything." },
+            { "field": "meta_data",    "type": "any[]",   "required": false, "note": "Schema-less array. Accepts anything." },
+            { "field": "...fields",    "type": "any",     "required": false, "note": "Any additional fields declared in additionalFields." }
+          ],
+          "responses": [
+            { "code": 201, "label": "Created",      "example": "{ \"isSuccess\": true, \"statusCode\": 201, \"data\": { \"uuid\": \"b336ce54-...\", \"slug\": \"things-fall-apart\", \"status\": \"active\" }, \"message\": \"books created\" }" },
+            { "code": 400, "label": "Validation error", "example": "{ \"isSuccess\": false, \"statusCode\": 400, \"message\": \"\\\"title_name\\\" is required\" }" },
+            { "code": 409, "label": "Duplicate",    "example": "{ \"isSuccess\": false, \"statusCode\": 409, \"message\": \"Duplicate entry\" }" }
+          ],
+          "example": "const book = await bookService.create({\n  title_name: \"Things Fall Apart\",\n  isbn: \"978-0-435-90553-6\",\n  libraryId: lib.uuid\n});"
+        },
+        {
+          "id": "create-many",
+          "method": "POST",
+          "path": "/create/many",
+          "summary": "Bulk insert multiple records.",
+          "description": "Accepts a top-level JSON array or { items: [] }. Validates every item before any insert. If one item fails validation the entire request is rejected with a message identifying the failing index.",
+          "params": [],
+          "query": [],
+          "body": [
+            { "field": "(array)",  "type": "object[]", "required": true, "note": "Array of documents. Same shape as create-one body." }
+          ],
+          "responses": [
+            { "code": 201, "label": "Created",      "example": "{ \"isSuccess\": true, \"statusCode\": 201, \"data\": [ ... ], \"message\": \"2 books records created\" }" },
+            { "code": 400, "label": "Item error",   "example": "{ \"isSuccess\": false, \"statusCode\": 400, \"message\": \"Item 1: \\\"title_name\\\" is required\" }" }
+          ],
+          "example": "const books = await bookService.createMany([\n  { title_name: \"Purple Hibiscus\", libraryId: lib.uuid },\n  { title_name: \"Half of a Yellow Sun\", libraryId: lib.uuid }\n]);"
+        }
+      ]
+    },
+    {
+      "id": "read",
+      "label": "Read",
+      "endpoints": [
+        {
+          "id": "get-all",
+          "method": "GET",
+          "path": "/all",
+          "summary": "Paginated list of all non-deleted records.",
+          "description": "Returns paginated data with full sort, filter, and field projection support. Soft-deleted records are always excluded.",
+          "params": [],
+          "query": [
+            { "key": "page",              "type": "number",  "default": "1",           "note": "Page number." },
+            { "key": "limit",             "type": "number",  "default": "20",          "note": "Records per page. Hard cap: 500." },
+            { "key": "sort",              "type": "string",  "default": "created_at",  "note": "Any document field name." },
+            { "key": "order",             "type": "string",  "default": "desc",        "note": "asc or desc." },
+            { "key": "fields",            "type": "string",  "default": "",            "note": "Comma-separated field projection. e.g. uuid,title_name,status" },
+            { "key": "filter[fieldName]", "type": "string",  "default": "",            "note": "Filter by any field. Multiple filters are ANDed. e.g. filter[status]=active" }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"isSuccess\": true, \"data\": { \"data\": [...], \"pagination\": { \"total\": 42, \"page\": 1, \"limit\": 20, \"totalPages\": 3, \"hasNext\": true, \"hasPrev\": false } } }" }
+          ],
+          "example": "const result = await bookService.all({\n  page: 1,\n  limit: 10,\n  sort: \"title_name\",\n  order: \"asc\",\n  filter: { status: \"active\" }\n});\n// result.data, result.pagination"
+        },
+        {
+          "id": "get-by-id",
+          "method": "GET",
+          "path": "/:id",
+          "summary": "Fetch a single record by uuid or MongoDB _id.",
+          "description": "Returns 404 if the record does not exist or has been soft-deleted. Accepts an optional fields projection.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [
+            { "key": "fields", "type": "string", "default": "", "note": "Comma-separated field projection." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK",        "example": "{ \"isSuccess\": true, \"data\": { \"uuid\": \"...\", \"title_name\": \"Things Fall Apart\", ... } }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404, \"message\": \"books not found\" }" }
+          ],
+          "example": "const book = await bookService.findById(\"b336ce54-7d69-47fb-93ef-ce1b03d13add\");\n\n// With projection\nconst slim = await bookService.findById(id, {\n  fields: [\"uuid\", \"title_name\", \"status\"]\n});"
+        },
+        {
+          "id": "get-children",
+          "method": "GET",
+          "path": "/:id/children",
+          "summary": "Fetch a record with its registered child entities embedded as paginated sub-collections.",
+          "description": "Each child entity appears as a key in the response object whose value is a full PaginatedResult. Child pagination, sort, and depth are controlled via query params.",
+          "params": [
+            { "key": "id", "note": "The parent record uuid or _id." }
+          ],
+          "query": [
+            { "key": "includeChildren",       "type": "string|boolean", "default": "true",    "note": "true = all registered children. Or comma-separated aliases e.g. chapters,reviews." },
+            { "key": "childDepth",            "type": "number",         "default": "1",       "note": "1 = immediate children only. 2 = grandchildren." },
+            { "key": "childPage[alias]",      "type": "number",         "default": "1",       "note": "Page for a specific child set. Replace alias with the child's alias." },
+            { "key": "childLimit[alias]",     "type": "number",         "default": "20",      "note": "Page size for a specific child set." },
+            { "key": "childSort[alias]",      "type": "string",         "default": "created_at", "note": "Sort field for a specific child set." },
+            { "key": "childOrder[alias]",     "type": "string",         "default": "desc",    "note": "Sort direction for a specific child set." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"data\": { \"uuid\": \"...\", \"chapters\": { \"data\": [...], \"pagination\": { \"total\": 12, ... } } } }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "const lib = await libraryService.withChildren(id, {\n  includeChildren: [\"books\"],\n  childDepth: 2,\n  childPagination: {\n    books: { page: 1, limit: 5 }\n  }\n});"
+        },
+        {
+          "id": "find-by",
+          "method": "GET",
+          "path": "/by/:field/:value",
+          "summary": "Find all records where :field equals :value.",
+          "description": "Equivalent to a single-field filter on /all. Returns a full paginated result with all standard pagination params.",
+          "params": [
+            { "key": "field", "note": "Any document field name. e.g. status, owned_by, libraryId." },
+            { "key": "value", "note": "The value to match." }
+          ],
+          "query": [
+            { "key": "page",  "type": "number", "default": "1",  "note": "Page number." },
+            { "key": "limit", "type": "number", "default": "20", "note": "Records per page." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"data\": { \"data\": [...], \"pagination\": { ... } } }" }
+          ],
+          "example": "const result = await bookService.findBy(\"libraryId\", lib.uuid, {\n  page: 1,\n  limit: 10\n});"
+        },
+        {
+          "id": "search",
+          "method": "GET",
+          "path": "/search",
+          "summary": "Search records by a query string.",
+          "description": "Case-insensitive regex search when searchFields are provided. Falls back to MongoDB $text search (requires a text index) when no fields are given. Returns 400 if the q param is absent.",
+          "params": [],
+          "query": [
+            { "key": "q",            "type": "string", "default": "",                    "note": "Search term. Required." },
+            { "key": "searchFields", "type": "string", "default": "(entity config)",     "note": "Comma-separated fields to search. Overrides entity's searchableFields for this request." },
+            { "key": "page",         "type": "number", "default": "1",                   "note": "Page number." },
+            { "key": "limit",        "type": "number", "default": "20",                  "note": "Records per page." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK",        "example": "{ \"data\": { \"data\": [...], \"pagination\": { ... } }, \"message\": \"Search results for \\\"chinua\\\"\" }" },
+            { "code": 400, "label": "Missing q", "example": "{ \"isSuccess\": false, \"message\": \"Search query param 'q' is required\" }" }
+          ],
+          "example": "const result = await bookService.search(\"chinua\", {\n  searchFields: [\"title_name\", \"description\"]\n});"
+        },
+        {
+          "id": "count",
+          "method": "GET",
+          "path": "/count",
+          "summary": "Return the total count of matching non-deleted records.",
+          "description": "Supports the same filter[field]=value params as /all. Soft-deleted records are excluded.",
+          "params": [],
+          "query": [
+            { "key": "filter[fieldName]", "type": "string", "default": "", "note": "Optional filter. Same syntax as /all." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"data\": { \"count\": 42 } }" }
+          ],
+          "example": "const total = await bookService.count({ status: \"active\" });"
+        },
+        {
+          "id": "exists",
+          "method": "GET",
+          "path": "/exists/:field/:value",
+          "summary": "Check whether a record exists where :field equals :value.",
+          "description": "Always returns 200. Never 404. Useful for client-side uniqueness checks before a create.",
+          "params": [
+            { "key": "field", "note": "Any document field. e.g. slug, isbn." },
+            { "key": "value", "note": "The value to check." }
+          ],
+          "query": [],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "Exists",     "example": "{ \"data\": { \"exists\": true } }" },
+            { "code": 200, "label": "Not exists", "example": "{ \"data\": { \"exists\": false } }" }
+          ],
+          "example": "const found = await bookService.exists({ slug: \"things-fall-apart\" });"
+        }
+      ]
+    },
+    {
+      "id": "update",
+      "label": "Update",
+      "endpoints": [
+        {
+          "id": "update",
+          "method": "PUT / PATCH",
+          "path": "/:id",
+          "summary": "Update fields on an existing record.",
+          "description": "Only fields included in the body are changed. Fields not sent retain their current values. If title_name changes, slug is regenerated. Validation runs against updateSchema (all fields optional by default). Fires the update event and one update.fieldName event per changed key.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [],
+          "body": [
+            { "field": "(any field)", "type": "any", "required": false, "note": "Any subset of the document's fields." }
+          ],
+          "responses": [
+            { "code": 200, "label": "OK",        "example": "{ \"isSuccess\": true, \"data\": { \"uuid\": \"...\", \"slug\": \"new-slug\", ... } }" },
+            { "code": 400, "label": "Validation","example": "{ \"isSuccess\": false, \"statusCode\": 400, \"message\": \"...\" }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "const updated = await bookService.update(id, {\n  status: \"inactive\",\n  updated_by: req.user.uuid\n});"
+        },
+        {
+          "id": "update-field",
+          "method": "PATCH",
+          "path": "/:id/field/:field",
+          "summary": "Update a single named field using dot-notation.",
+          "description": "Body must be { value: <newValue> }. Supports dot-notation for nested paths. Does not trigger Joi schema validation (the value is applied raw). Fires update events.",
+          "params": [
+            { "key": "id",    "note": "The record uuid or MongoDB _id." },
+            { "key": "field", "note": "Dot-notation path. e.g. status, extra_data.0.tokenName." }
+          ],
+          "query": [],
+          "body": [
+            { "field": "value", "type": "any", "required": true, "note": "The new value to assign to the field." }
+          ],
+          "responses": [
+            { "code": 200, "label": "OK",             "example": "{ \"data\": { \"uuid\": \"...\", \"status\": \"active\" } }" },
+            { "code": 400, "label": "Missing value",  "example": "{ \"message\": \"Request body must contain { value }\" }" },
+            { "code": 404, "label": "Not found",      "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "// Top-level field\nawait bookService.updateField(id, \"status\", \"inactive\");\n\n// Nested array element property\nawait bookService.updateField(id, \"extra_data.0.tokenName\", \"Zugacoin V2\");"
+        },
+        {
+          "id": "nested-op",
+          "method": "PATCH",
+          "path": "/:id/nested",
+          "summary": "Apply a single nested operation using a MongoDB operator.",
+          "description": "Surgical mutation of nested objects and arrays. Body must contain field (dot-path), operation (operator name), and value. The _mmid auto-injected on every array object item is used for patch_item and pull_id.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [],
+          "body": [
+            { "field": "field",     "type": "string", "required": true,  "note": "Dot-notation path to the target field." },
+            { "field": "operation", "type": "string", "required": true,  "note": "One of: set, unset, push, push_many, pull, pull_id, patch_item, add_to_set, increment, rename." },
+            { "field": "value",     "type": "any",    "required": false, "note": "Depends on the operation. See nested ops reference." }
+          ],
+          "responses": [
+            { "code": 200, "label": "OK",       "example": "{ \"isSuccess\": true, \"data\": { ... updated document ... } }" },
+            { "code": 400, "label": "Bad op",   "example": "{ \"message\": \"patch_item requires value._mmid to identify the target array element\" }" },
+            { "code": 404, "label": "Not found","example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "// Set a nested object property\nawait profileEntity.nested(id, {\n  field: \"personal_information.email\",\n  operation: \"set\",\n  value: \"new@email.com\"\n});\n\n// Update a specific array item by _mmid\nawait profileEntity.nested(id, {\n  field: \"services\",\n  operation: \"patch_item\",\n  value: { _mmid: \"mmid-cleaning\", category: \"Premium Cleaning\" }\n});"
+        },
+        {
+          "id": "nested-batch",
+          "method": "PATCH",
+          "path": "/:id/nested/batch",
+          "summary": "Apply multiple nested operations in a single request.",
+          "description": "Accepts an array of operation objects or { ops: [] }. Non-patch_item operations are merged into a single updateOne call. patch_item operations each get their own call due to arrayFilters.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [],
+          "body": [
+            { "field": "(array)", "type": "NestedOpPayload[]", "required": true, "note": "Array of { field, operation, value } objects." }
+          ],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"isSuccess\": true, \"data\": { ... updated document ... } }" }
+          ],
+          "example": "await profileEntity.nestedBatch(id, [\n  { field: \"rating_average\",             operation: \"set\",       value: 4.5 },\n  { field: \"tags\",                       operation: \"push\",      value: \"verified\" },\n  { field: \"personal_information.phone\", operation: \"set\",       value: \"08012345678\" }\n]);"
+        }
+      ]
+    },
+    {
+      "id": "delete",
+      "label": "Delete and restore",
+      "endpoints": [
+        {
+          "id": "delete",
+          "method": "DELETE",
+          "path": "/:id",
+          "summary": "Soft-delete a record by default. Pass ?hard=true for permanent removal.",
+          "description": "Soft delete sets deleted_at to now and status to archived. The record becomes invisible to all read endpoints but remains in the collection and can be restored. Hard delete (requires ?hard=true) permanently removes the document. The delete lifecycle event fires in both cases.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [
+            { "key": "hard", "type": "boolean", "default": "false", "note": "Pass hard=true to permanently remove the document." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "Deleted",   "example": "{ \"isSuccess\": true, \"data\": null, \"message\": \"books deleted\" }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "// Soft delete (default)\nawait bookService.delete(id);\n\n// Hard delete\nawait bookService.delete(id, { soft: false });"
+        },
+        {
+          "id": "restore",
+          "method": "POST",
+          "path": "/:id/restore",
+          "summary": "Restore a soft-deleted record.",
+          "description": "Sets deleted_at back to null and status back to active. The record becomes visible to all read endpoints again. The restore lifecycle event fires.",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "Restored",  "example": "{ \"isSuccess\": true, \"data\": { \"uuid\": \"...\", \"status\": \"active\", \"deleted_at\": null } }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "const restored = await bookService.restore(id);"
+        }
+      ]
+    }
+  ]
+}

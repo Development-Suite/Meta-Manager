@@ -33,6 +33,23 @@ const BASE_FIELDS: SchemaFields = {
   deleted_at: { type: Date, default: null },
 };
 
+import { v4 as uuidv4 } from "uuid";
+
+function injectMmids(doc: any): void {
+  if (!doc || typeof doc !== "object") return;
+  const obj = doc.toObject ? doc.toObject({ virtuals: false }) : doc;
+  for (const key of Object.keys(obj)) {
+    const val = (doc as any)[key];
+    if (Array.isArray(val)) {
+      for (const item of val) {
+        if (item && typeof item === "object" && !Array.isArray(item) && !item._mmid) {
+          item._mmid = uuidv4();
+        }
+      }
+    }
+  }
+}
+
 export function buildSchema(options: MetaEntityOptions): Schema {
   const fields: SchemaFields = {
     ...BASE_FIELDS,
@@ -76,6 +93,17 @@ export function buildSchema(options: MetaEntityOptions): Schema {
       const { v4: uuidv4 } = require("uuid");
       this.uuid = uuidv4();
     }
+    next();
+  });
+
+  // Inject _mmid into every element of every array field that holds objects,
+  // so nested items have a stable identity without requiring a sub-schema.
+  schema.post("init", function (doc: any) {
+    injectMmids(doc);
+  });
+
+  schema.pre("save", function (next) {
+    injectMmids(this as any);
     next();
   });
 

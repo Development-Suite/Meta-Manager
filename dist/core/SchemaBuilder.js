@@ -33,6 +33,22 @@ const BASE_FIELDS = {
     slug: { type: String, default: null, index: true },
     deleted_at: { type: Date, default: null },
 };
+const uuid_1 = require("uuid");
+function injectMmids(doc) {
+    if (!doc || typeof doc !== "object")
+        return;
+    const obj = doc.toObject ? doc.toObject({ virtuals: false }) : doc;
+    for (const key of Object.keys(obj)) {
+        const val = doc[key];
+        if (Array.isArray(val)) {
+            for (const item of val) {
+                if (item && typeof item === "object" && !Array.isArray(item) && !item._mmid) {
+                    item._mmid = (0, uuid_1.v4)();
+                }
+            }
+        }
+    }
+}
 function buildSchema(options) {
     const fields = {
         ...BASE_FIELDS,
@@ -72,6 +88,15 @@ function buildSchema(options) {
             const { v4: uuidv4 } = require("uuid");
             this.uuid = uuidv4();
         }
+        next();
+    });
+    // Inject _mmid into every element of every array field that holds objects,
+    // so nested items have a stable identity without requiring a sub-schema.
+    schema.post("init", function (doc) {
+        injectMmids(doc);
+    });
+    schema.pre("save", function (next) {
+        injectMmids(this);
         next();
     });
     if (options.searchableFields && options.searchableFields.length > 0) {

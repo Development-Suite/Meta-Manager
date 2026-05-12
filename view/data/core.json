@@ -1,0 +1,60 @@
+{
+  "package": {
+    "name": "@ubyjerome/meta-manager",
+    "version": "0.2.0",
+    "tagline": "MongoDB entity manager with REST, events, interceptors, and relations out of the box.",
+    "description": "Define an entity once and get a full REST API, typed service layer, lifecycle events, interceptors, and deep parent/child relations with no repetitive boilerplate.",
+    "install": "npm install @ubyjerome/meta-manager mongoose express"
+  },
+  "nav": [
+    { "id": "overview",     "label": "Overview",        "icon": "fa-house" },
+    { "id": "quickstart",   "label": "Quick start",     "icon": "fa-bolt" },
+    { "id": "entity",       "label": "Entity",          "icon": "fa-cube" },
+    { "id": "service",      "label": "Service",         "icon": "fa-layer-group" },
+    { "id": "endpoints",    "label": "Endpoints",       "icon": "fa-network-wired" },
+    { "id": "events",       "label": "Events",          "icon": "fa-bolt-lightning" },
+    { "id": "interceptors", "label": "Interceptors",    "icon": "fa-shield-halved" },
+    { "id": "nested",       "label": "Nested ops",      "icon": "fa-code-branch" },
+    { "id": "relations",    "label": "Relations",       "icon": "fa-diagram-project" },
+    { "id": "validation",   "label": "Validation",      "icon": "fa-circle-check" },
+    { "id": "typescript",   "label": "TypeScript",      "icon": "fa-code" }
+  ],
+  "concepts": [
+    {
+      "id": "entity",
+      "title": "Entity",
+      "summary": "The central construct. One MetaEntity call produces a Mongoose model, a full Express router, a service layer, and an event bus.",
+      "detail": "A MetaEntity wraps a MongoDB collection. It enforces that a Mongoose connection is active at instantiation time and compiles the schema from your options, injecting all base fields automatically. The entity is the single source of truth for that collection's shape, validation rules, relations, and behaviour."
+    },
+    {
+      "id": "service",
+      "title": "Service",
+      "summary": "The data layer. Every entity exposes a service property with typed methods for all read and write operations.",
+      "detail": "MetaService operates directly on the Mongoose model. All reads exclude soft-deleted documents by default. Pagination, sorting, field projection, and arbitrary filter are composable through a single QueryOptions object. The service fires lifecycle events on every mutation."
+    },
+    {
+      "id": "controller",
+      "title": "Controller",
+      "summary": "An Express Router mounted at any path. All REST endpoints are registered automatically.",
+      "detail": "MetaController registers 14+ routes on a plain Express Router. Route order is deliberate: named paths like /all, /search, /count are registered before /:id so Express does not consume them as ID parameters. Interceptors are applied per action type before every handler."
+    },
+    {
+      "id": "events",
+      "title": "Events",
+      "summary": "Lifecycle callbacks that fire after every mutation. Fully typed with per-field path inference.",
+      "detail": "The event system supports exact event names (create, delete, restore), field-level update paths (update.status), wildcard array patterns (update.extra_data[*]), and named array element patterns (update.extra_data[tokenName].Zugacoin). TypeScript narrows the callback signature based on the event string passed."
+    },
+    {
+      "id": "interceptors",
+      "title": "Interceptors",
+      "summary": "Express-compatible middleware mounted per action type. The primary hook for RBAC, audit logging, and request augmentation.",
+      "detail": "Interceptors are registered against action types: create, read, update, delete, or all. Multiple interceptors for the same action run in registration order. Each is a standard (req, res, next) function and may be async."
+    },
+    {
+      "id": "nested",
+      "title": "Nested operations",
+      "summary": "Surgical mutations on nested objects and arrays using MongoDB operators directly.",
+      "detail": "Every object inside an array receives an auto-injected _mmid (a stable UUID). This lets you target specific array items by identity rather than index. The nested ops layer maps eight operator names to $set, $unset, $push, $pull, $addToSet, $inc, and $rename, all via model.updateOne with arrayFilters for patch_item."
+    }
+  ]
+}

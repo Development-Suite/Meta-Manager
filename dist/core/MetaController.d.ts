@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { InterceptorAction, InterceptorCallback, MetaEntityOptions } from "../types";
 import { IMetaService, BaseEntityDocument } from "../types";
+import { NestedOpsService } from "./NestedOpsService";
 export declare class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     private readonly service;
+    private readonly nestedOpsService;
     private readonly entityName;
     private readonly options;
     readonly router: Router;
     private interceptors;
-    constructor(service: IMetaService<T>, entityName: string, options: MetaEntityOptions);
+    constructor(service: IMetaService<T>, nestedOpsService: NestedOpsService<T>, entityName: string, options: MetaEntityOptions);
     addInterceptor(action: InterceptorAction | InterceptorAction[], callback: InterceptorCallback): void;
     private getInterceptors;
     private applyInterceptors;
