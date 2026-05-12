@@ -650,7 +650,7 @@
       position: relative;
     }
 
-    .endpoint-block::before {
+    /* .endpoint-block::before {
       content: '';
       position: absolute;
       top: 0;
@@ -658,15 +658,15 @@
       bottom: 0;
       width: 3px;
       background: var(--hairline);
-    }
+    } */
 
     .endpoint-block.method-get-accent::before {
       background: #03904a;
     }
 
-    .endpoint-block.method-post-accent::before {
+    /* .endpoint-block.method-post-accent::before {
       background: #4c98b9;
-    }
+    } */
 
     .endpoint-block.method-patch-accent::before {
       background: #c8b800;
@@ -1108,9 +1108,7 @@
 
     <!-- sidebar -->
     <nav id="sidebar" aria-label="documentation navigation">
-      <div class="nav-section-label">navigation</div>
       <div id="nav-items-root"></div>
-      <div class="nav-section-label">endpoints</div>
       <div id="nav-items-endpoints"></div>
     </nav>
 
@@ -1778,21 +1776,21 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
 
     function buildQuerySection(items) {
       if (!items || items.length === 0) return '';
-      let html = `<div class="param-section-label">query params</div><table class="doc-table"><thead><tr><th>param</th><th>type</th><th>default</th><th>note</th></tr></thead><tbody>`;
+      let html = `<div class="param-section-label">query params</div><div class="doc-table-wrap"><table class="doc-table"><thead><tr><th>param</th><th>type</th><th>default</th><th>note</th></tr></thead><tbody>`;
       items.forEach(p => {
         html += `<tr><td>${p.key}</td><td>${p.type || ''}</td><td>${p.default || ''}</td><td>${p.note}</td></tr>`;
       });
-      return html + '</tbody></table>';
+      return html + '</tbody></table> </div">';
     }
 
     function buildBodySection(items) {
       if (!items || items.length === 0) return '';
-      let html = `<div class="param-section-label">body fields</div><table class="doc-table"><thead><tr><th>field</th><th>type</th><th>note</th></tr></thead><tbody>`;
+      let html = `<div class="param-section-label">body fields</div><div class="doc-table-wrap"><table class="doc-table"><thead><tr><th>field</th><th>type</th><th>note</th></tr></thead><tbody>`;
       items.forEach(p => {
         const req = p.required ? '<span class="required-pill">required</span>' : '';
         html += `<tr><td>${p.field}${req}</td><td>${p.type}</td><td>${p.note}</td></tr>`;
       });
-      return html + '</tbody></table>';
+      return html + '</tbody></table></div>';
     }
 
     function buildResponsesSection(items) {
