@@ -4,9 +4,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>meta-manager docs</title>
+  <title>Meta Manager</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" href="/public/favicon.svg?cred=icon-by-icons8.com" type="image/svg+xml">
+  <link rel="icon" href="/public/favicon.svg?cred=icon-by-icons8.com" sizes="32x32" type="image/svg+xml">
+  <link rel="icon" href="/public/favicon.svg?cred=icon-by-icons8.com" sizes="16x16" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/public/favicon.svg?cred=icon-by-icons8.com" sizes="180x180">
+  <link rel="mask-icon" href="/public/favicon.svg?cred=icon-by-icons8.com" color="#da291c">
+  <link rel="shortcut icon" href="/public/favicon.svg?cred=icon-by-icons8.com">
+  <meta name="theme-color" content="#181818">
   <link
     href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;600;700&display=swap"
     rel="stylesheet">
@@ -375,6 +382,7 @@
       font-size: 36px;
       font-weight: 500;
       color: var(--ink);
+      text-transform: capitalize;
       letter-spacing: -0.02em;
       line-height: 1.15;
       margin-bottom: var(--sp-sm);
@@ -382,6 +390,7 @@
 
     h2.section-title {
       font-family: var(--font-display);
+      text-transform: capitalize;
       font-size: 22px;
       font-weight: 500;
       color: var(--ink);
@@ -1126,21 +1135,21 @@
 
           <div class="hero-actions">
             <a class="btn-primary" onclick="navigate('quickstart')">
-              quick start
+              Quick start
             </a>
             <a class="btn-outline" onclick="navigate('endpoints')">
-              <i class="fa-solid fa-network-wired"></i> endpoints
+              <i class="fa-solid fa-network-wired"></i> Endpoints
             </a>
           </div>
         </div>
         <div class="doc-section">
-          <h2 class="section-title"><i class="fa-solid fa-cube"></i> core concepts</h2>
+          <h2 class="section-title"><i class="fa-solid fa-cube"></i> Core concepts</h2>
           <p class="lead">The package is built around five interlocking concepts. Understanding all five makes the API
             predictable across every surface.</p>
           <div class="concept-grid" id="concepts-grid"></div>
         </div>
         <div class="doc-section">
-          <h2 class="section-title"><i class="fa-solid fa-list"></i> base document shape</h2>
+          <h2 class="section-title"><i class="fa-solid fa-list"></i> Base document shape</h2>
           <p>Every entity document inherits these fields automatically. You never need to declare them in
             additionalFields.</p>
           <div class="doc-table-wrap">
@@ -1438,7 +1447,7 @@ entity.<span class="fn">nestedBatch</span>(id, payloads)</code></pre>
           <h1 class="page-title">TypeScript</h1>
           <p class="lead" id="ts-intro"></p>
           <div class="section-divider"></div>
-          <h2 class="section-title">document extension</h2>
+          <h2 class="section-title">Document extension</h2>
           <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn"
               onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
           <pre id="ts-example-pre"><code></code></pre>
