@@ -21,7 +21,7 @@ class NestedOpsController {
     }
     runInterceptors(action) {
         return (req, res, next) => {
-            const middlewares = this.getInterceptors(action);
+            const middlewares = this.getInterceptors(action, req);
             if (middlewares.length === 0)
                 return next();
             let idx = 0;

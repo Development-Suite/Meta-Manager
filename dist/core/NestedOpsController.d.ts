@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { InterceptorCallback } from "../types";
+import { CustomRequest, InterceptorCallback } from "../types";
 import { NestedOpsService } from "./NestedOpsService";
 import { BaseEntityDocument } from "../types";
 export declare class NestedOpsController<T extends BaseEntityDocument = BaseEntityDocument> {
     private readonly service;
     private readonly entityName;
     private readonly getInterceptors;
-    constructor(service: NestedOpsService<T>, entityName: string, getInterceptors: (action: string) => InterceptorCallback[]);
+    constructor(service: NestedOpsService<T>, entityName: string, getInterceptors: (action: string, req?: CustomRequest) => InterceptorCallback[]);
     mount(router: Router): void;
     private runInterceptors;
     private handleSingle;

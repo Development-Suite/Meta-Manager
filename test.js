@@ -741,6 +741,90 @@ async function run() {
     assertEqual(order[1], 2);
   });
 
+  await test("field-targeted interceptor fires when body contains that field", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptField", {});
+    testEntity.intercept("update.provider_id", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { provider_id: "abc123", other: "val" }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "field-targeted interceptor should fire when provider_id is in body");
+  });
+
+  await test("field-targeted interceptor does NOT fire when field is absent from body", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptFieldMiss", {});
+    testEntity.intercept("update.provider_id", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { status: "active" }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(!fired, "field-targeted interceptor should NOT fire when provider_id is absent");
+  });
+
+  await test("broad 'update' interceptor fires regardless of fields", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptBroad", {});
+    testEntity.intercept("update", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { anything: "value" }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "broad update interceptor should always fire");
+  });
+
+  await test("field-targeted interceptor fires for PATCH /:id/field/:field via req.params.field", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptParam", {});
+    testEntity.intercept("update.status", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { value: "active" }, params: { field: "status" }, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "should fire when params.field matches targeted field");
+  });
+
+  await test("field-targeted interceptor fires for nested op via req.body.field", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptNested", {});
+    testEntity.intercept("update.services", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { field: "services", operation: "push", value: {} }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "should fire when body.field matches targeted field");
+  });
+
+  await test("parent path matches child path - update.personal_information fires for personal_information.email", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptParentPath", {});
+    testEntity.intercept("update.personal_information", (req, res, next) => { fired = true; next(); });
+    const mock = { body: { field: "personal_information.email", operation: "set", value: "x" }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "parent path interceptor should fire for deeper child path");
+  });
+
+  await test("multiple field patterns - fires when any matches", async () => {
+    let fired = false;
+    const testEntity = new MetaEntity("InterceptMulti", {});
+    testEntity.intercept(["update.status", "update.provider_id"], (req, res, next) => { fired = true; next(); });
+    const mock = { body: { provider_id: "p1" }, params: {}, method: "PATCH", originalUrl: "/" };
+    const mockRes = {};
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("update", mock, mockRes, resolve);
+    });
+    assert(fired, "should fire when any of the listed fields is present");
+  });
+
   await test("'all' interceptor action runs on any action type", async () => {
     let ran = false;
     const testEntity = new MetaEntity("InterceptAll", {});

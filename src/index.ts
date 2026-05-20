@@ -35,3 +35,4 @@ export type {
 } from "./types";
 
 export type { NestedOperation, NestedOpPayload, NestedOpResult } from "./types/nestedOps";
+export { resolveIntendedFields } from "./types";

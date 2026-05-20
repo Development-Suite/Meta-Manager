@@ -131,12 +131,40 @@ export interface EventSubscription {
     types: string[];
     callback: EventCallback<any>;
 }
-export type InterceptorAction = "create" | "read" | "update" | "delete" | "all";
+/**
+ * Broad action types. Can be narrowed to a specific field path for update
+ * operations using the "update.fieldName" syntax, e.g.:
+ *   "update.provider_id"
+ *   "update.status"
+ *   "update.personal_information.email"
+ *
+ * Broad actions:
+ *   "create"  - fires on any create
+ *   "read"    - fires on any read
+ *   "update"  - fires on any update (all fields)
+ *   "delete"  - fires on any delete
+ *   "all"     - fires on every action
+ *
+ * Field-targeted update actions:
+ *   "update.fieldName" - fires only when req contains that field
+ */
+export type InterceptorAction = "create" | "read" | "update" | "delete" | "all" | `update.${string}`;
 export type InterceptorCallback = (req: CustomRequest, res: CustomResponse, next: NextFunction) => void | Promise<void>;
 export interface InterceptorConfig {
     action: InterceptorAction | InterceptorAction[];
     callback: InterceptorCallback;
 }
+/**
+ * Resolves the intended field paths from a request for field-targeted
+ * interceptor matching.
+ *
+ * Sources per route type:
+ *   PUT/PATCH /:id              -> keys of req.body
+ *   PATCH /:id/field/:field     -> req.params.field
+ *   PATCH /:id/nested           -> req.body.field
+ *   PATCH /:id/nested/batch     -> req.body[].field (each op)
+ */
+export declare function resolveIntendedFields(req: CustomRequest): string[];
 export interface MetaEntityOptions {
     additionalFields?: SchemaFields;
     /**

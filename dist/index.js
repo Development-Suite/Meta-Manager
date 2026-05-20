@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.buildSchema = exports.NestedOpsService = exports.MetaValidator = exports.MetaEventEmitter = exports.MetaService = exports.MetaEntity = void 0;
+exports.resolveIntendedFields = exports.buildSchema = exports.NestedOpsService = exports.MetaValidator = exports.MetaEventEmitter = exports.MetaService = exports.MetaEntity = void 0;
 var MetaEntity_1 = require("./core/MetaEntity");
 Object.defineProperty(exports, "MetaEntity", { enumerable: true, get: function () { return MetaEntity_1.MetaEntity; } });
 var MetaService_1 = require("./core/MetaService");
@@ -13,4 +13,6 @@ var NestedOpsService_1 = require("./core/NestedOpsService");
 Object.defineProperty(exports, "NestedOpsService", { enumerable: true, get: function () { return NestedOpsService_1.NestedOpsService; } });
 var SchemaBuilder_1 = require("./core/SchemaBuilder");
 Object.defineProperty(exports, "buildSchema", { enumerable: true, get: function () { return SchemaBuilder_1.buildSchema; } });
+var types_1 = require("./types");
+Object.defineProperty(exports, "resolveIntendedFields", { enumerable: true, get: function () { return types_1.resolveIntendedFields; } });
 //# sourceMappingURL=index.js.map

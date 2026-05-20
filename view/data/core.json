@@ -1,7 +1,7 @@
 {
   "package": {
     "name": "@ubyjerome/meta-manager",
-    "version": "0.2.0",
+    "version": "1.0.0",
     "tagline": "MongoDB entity manager with REST, events, interceptors, and relations out of the box.",
     "description": "Define an entity once and get a full REST API, typed service layer, lifecycle events, interceptors, and deep parent/child relations with no repetitive boilerplate.",
     "install": "npm install @ubyjerome/meta-manager mongoose express"

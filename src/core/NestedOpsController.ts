@@ -8,7 +8,7 @@ export class NestedOpsController<T extends BaseEntityDocument = BaseEntityDocume
   constructor(
     private readonly service: NestedOpsService<T>,
     private readonly entityName: string,
-    private readonly getInterceptors: (action: string) => InterceptorCallback[]
+    private readonly getInterceptors: (action: string, req?: CustomRequest) => InterceptorCallback[]
   ) {}
 
   mount(router: Router): void {
@@ -31,7 +31,7 @@ export class NestedOpsController<T extends BaseEntityDocument = BaseEntityDocume
 
   private runInterceptors(action: string) {
     return (req: CustomRequest, res: CustomResponse, next: () => void): void => {
-      const middlewares = this.getInterceptors(action);
+      const middlewares = this.getInterceptors(action, req);
       if (middlewares.length === 0) return next();
       let idx = 0;
       const run = (): void => {

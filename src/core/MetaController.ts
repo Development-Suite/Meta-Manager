@@ -6,6 +6,7 @@ import {
   InterceptorAction,
   InterceptorCallback,
   MetaEntityOptions,
+  resolveIntendedFields,
 } from "../types";
 import { IMetaService, BaseEntityDocument } from "../types";
 import serverResponse from "../utils/serverResponse";
@@ -15,7 +16,7 @@ import { NestedOpsController } from "./NestedOpsController";
 
 export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   readonly router: Router;
-  private interceptors: InterceptorConfig[] = [];
+  readonly interceptors: InterceptorConfig[] = [];
 
   constructor(
     private readonly service: IMetaService<T>,
@@ -34,22 +35,60 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     this.interceptors.push({ action, callback });
   }
 
-  private getInterceptors(action: InterceptorAction): InterceptorCallback[] {
+  /**
+   * Returns the callbacks that should run for a given action and request.
+   *
+   * Matching rules:
+   *   "all"              - always matches
+   *   "create/read/delete" - matches exact action
+   *   "update"           - matches any update regardless of fields
+   *   "update.fieldName" - matches only when the request targets that field
+   */
+  getInterceptors(action: InterceptorAction, req?: CustomRequest): InterceptorCallback[] {
+    const intendedFields = (action === "update" && req)
+      ? resolveIntendedFields(req)
+      : [];
+
     return this.interceptors
       .filter((i) => {
-        const actions = Array.isArray(i.action) ? i.action : [i.action];
-        return actions.includes("all") || actions.includes(action);
+        const patterns = Array.isArray(i.action) ? i.action : [i.action];
+        return patterns.some((pattern) => this.matchesPattern(pattern, action, intendedFields));
       })
       .map((i) => i.callback);
   }
 
-  private applyInterceptors(
+  private matchesPattern(
+    pattern: InterceptorAction,
+    action: InterceptorAction,
+    intendedFields: string[]
+  ): boolean {
+    // "all" always fires
+    if (pattern === "all") return true;
+
+    // exact broad match: "create", "read", "delete", "update"
+    if (pattern === action) return true;
+
+    // field-targeted update: "update.fieldName" or "update.nested.path"
+    if (pattern.startsWith("update.") && action === "update") {
+      const targetField = pattern.slice("update.".length);
+      // match if any intended field starts with or equals the target
+      // e.g. pattern "update.personal_information" fires when
+      // intendedFields includes "personal_information.email"
+      return intendedFields.some(
+        (f) => f === targetField || f.startsWith(targetField + ".")
+      );
+    }
+
+    return false;
+  }
+
+  applyInterceptors(
     action: InterceptorAction,
     req: CustomRequest,
     res: CustomResponse,
     next: NextFunction
   ): void {
-    const middlewares = this.getInterceptors(action);
+    const middlewares = this.getInterceptors(action, req);
     if (middlewares.length === 0) return next();
 
     let idx = 0;
@@ -64,26 +103,25 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   private registerRoutes(): void {
     const r = this.router;
 
-    r.get("/all", this.intercept("read"), this.handleAll.bind(this));
-    r.get("/search", this.intercept("read"), this.handleSearch.bind(this));
-    r.get("/count", this.intercept("read"), this.handleCount.bind(this));
-    r.get("/by/:field/:value", this.intercept("read"), this.handleFindBy.bind(this));
-    r.get("/exists/:field/:value", this.intercept("read"), this.handleExists.bind(this));
-    r.post("/create", this.intercept("create"), this.handleCreate.bind(this));
-    r.post("/create/many", this.intercept("create"), this.handleCreateMany.bind(this));
-    r.get("/:id/children", this.intercept("read"), this.handleGetWithChildren.bind(this));
-    r.get("/:id", this.intercept("read"), this.handleGetById.bind(this));
-    r.put("/:id", this.intercept("update"), this.handleUpdate.bind(this));
-    r.patch("/:id", this.intercept("update"), this.handleUpdate.bind(this));
-    r.patch("/:id/field/:field", this.intercept("update"), this.handleUpdateField.bind(this));
-    r.delete("/:id", this.intercept("delete"), this.handleDelete.bind(this));
-    r.post("/:id/restore", this.intercept("update"), this.handleRestore.bind(this));
+    r.get("/all",                    this.intercept("read"),   this.handleAll.bind(this));
+    r.get("/search",                 this.intercept("read"),   this.handleSearch.bind(this));
+    r.get("/count",                  this.intercept("read"),   this.handleCount.bind(this));
+    r.get("/by/:field/:value",       this.intercept("read"),   this.handleFindBy.bind(this));
+    r.get("/exists/:field/:value",   this.intercept("read"),   this.handleExists.bind(this));
+    r.post("/create",                this.intercept("create"), this.handleCreate.bind(this));
+    r.post("/create/many",           this.intercept("create"), this.handleCreateMany.bind(this));
+    r.get("/:id/children",           this.intercept("read"),   this.handleGetWithChildren.bind(this));
+    r.get("/:id",                    this.intercept("read"),   this.handleGetById.bind(this));
+    r.put("/:id",                    this.intercept("update"), this.handleUpdate.bind(this));
+    r.patch("/:id",                  this.intercept("update"), this.handleUpdate.bind(this));
+    r.patch("/:id/field/:field",     this.intercept("update"), this.handleUpdateField.bind(this));
+    r.delete("/:id",                 this.intercept("delete"), this.handleDelete.bind(this));
+    r.post("/:id/restore",           this.intercept("update"), this.handleRestore.bind(this));
 
-    // Nested operations
     const nestedCtrl = new NestedOpsController<T>(
       this.nestedOpsService,
       this.entityName,
-      (action) => this.getInterceptors(action as any)
+      (action, req) => this.getInterceptors(action as InterceptorAction, req)
     );
     nestedCtrl.mount(r);
   }

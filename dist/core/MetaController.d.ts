@@ -1,5 +1,5 @@
-import { Router } from "express";
-import { InterceptorAction, InterceptorCallback, MetaEntityOptions } from "../types";
+import { Router, NextFunction } from "express";
+import { CustomRequest, CustomResponse, InterceptorConfig, InterceptorAction, InterceptorCallback, MetaEntityOptions } from "../types";
 import { IMetaService, BaseEntityDocument } from "../types";
 import { NestedOpsService } from "./NestedOpsService";
 export declare class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
@@ -8,11 +8,21 @@ export declare class MetaController<T extends BaseEntityDocument = BaseEntityDoc
     private readonly entityName;
     private readonly options;
     readonly router: Router;
-    private interceptors;
+    readonly interceptors: InterceptorConfig[];
     constructor(service: IMetaService<T>, nestedOpsService: NestedOpsService<T>, entityName: string, options: MetaEntityOptions);
     addInterceptor(action: InterceptorAction | InterceptorAction[], callback: InterceptorCallback): void;
-    private getInterceptors;
-    private applyInterceptors;
+    /**
+     * Returns the callbacks that should run for a given action and request.
+     *
+     * Matching rules:
+     *   "all"              - always matches
+     *   "create/read/delete" - matches exact action
+     *   "update"           - matches any update regardless of fields
+     *   "update.fieldName" - matches only when the request targets that field
+     */
+    getInterceptors(action: InterceptorAction, req?: CustomRequest): InterceptorCallback[];
+    private matchesPattern;
+    applyInterceptors(action: InterceptorAction, req: CustomRequest, res: CustomResponse, next: NextFunction): void;
     private registerRoutes;
     private intercept;
     private isJoiOrValidationError;
