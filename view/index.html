@@ -1453,6 +1453,7 @@ entity.<span class="fn">nestedBatch</span>(id, payloads)</code></pre>
           <pre id="ts-example-pre"><code></code></pre>
           <div class="section-divider"></div>
           <h2 class="section-title">key types exported</h2>
+          <div class="doc-table-wrap">
           <table class="doc-table">
             <thead>
               <tr>
@@ -1507,6 +1508,7 @@ entity.<span class="fn">nestedBatch</span>(id, payloads)</code></pre>
               </tr>
             </tbody>
           </table>
+          </div>
           <div class="section-divider"></div>
           <h2 class="section-title">event path inference</h2>
           <p id="ts-event-paths-text"></p>
@@ -1898,11 +1900,11 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
 
     function buildParamsSection(label, items, keyField, noteField) {
       if (!items || items.length === 0) return '';
-      let html = `<div class="param-section-label">${label}</div><table class="doc-table"><thead><tr><th>param</th><th>note</th></tr></thead><tbody>`;
+      let html = `<div class="param-section-label">${label}</div><div class="doc-table-wrap"><table class="doc-table"><thead><tr><th>param</th><th>note</th></tr></thead><tbody>`;
       items.forEach(p => {
         html += `<tr><td>${p[keyField]}</td><td>${p[noteField]}</td></tr>`;
       });
-      return html + '</tbody></table>';
+      return html + '</tbody></table></div>';
     }
 
     function buildQuerySection(items) {
