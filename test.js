@@ -59,6 +59,24 @@ function matchesFilter(doc, filter) {
       if (doc[key] !== null && doc[key] !== undefined) return false;
       continue;
     }
+    // $in operator
+    if (val && typeof val === "object" && !Array.isArray(val) && Array.isArray(val.$in)) {
+      if (!val.$in.map(String).includes(String(doc[key]))) return false;
+      continue;
+    }
+    // $gte / $lte for date range queries
+    if (val && typeof val === "object" && !Array.isArray(val) && (val.$gte !== undefined || val.$lte !== undefined)) {
+      const docVal = doc[key] instanceof Date ? doc[key] : new Date(doc[key] || 0);
+      if (val.$gte !== undefined) {
+        const cmp = val.$gte instanceof Date ? val.$gte : new Date(val.$gte);
+        if (docVal < cmp) return false;
+      }
+      if (val.$lte !== undefined) {
+        const cmp = val.$lte instanceof Date ? val.$lte : new Date(val.$lte);
+        if (docVal > cmp) return false;
+      }
+      continue;
+    }
     if (doc[key] !== val) return false;
   }
   return true;
@@ -118,21 +136,94 @@ function buildMockModel(name) {
       let skipped = 0;
       let lim = Infinity;
       const chain = {
-        sort(s) { return chain; },
+        sort(s) {
+          if (s && typeof s === 'object') {
+            const [sf, sd] = Object.entries(s)[0];
+            sorted = [...matched].sort((a, b) => {
+              const av = a[sf] ?? 0, bv = b[sf] ?? 0;
+              return sd === -1 || sd === 'desc' ? (bv > av ? 1 : -1) : (av > bv ? 1 : -1);
+            });
+          }
+          return chain;
+        },
         skip(n) { skipped = n; return chain; },
         limit(n) { lim = n; return chain; },
         lean() { return Promise.resolve(sorted.slice(skipped, skipped + lim).map(d => ({ ...d }))); },
+        select(fields) { return chain; },
         then(resolve) { return Promise.resolve(sorted.slice(skipped, skipped + lim)).then(resolve); },
       };
       return chain;
     },
 
-    async findOne(filter = {}, projection) {
-      return col.find(d => matchesFilter(d, filter)) ?? null;
+    findOne(filter = {}, projection) {
+      const doc = col.find(d => matchesFilter(d, filter)) ?? null;
+      const plain = doc ? { ...doc } : null;
+      return {
+        lean: () => Promise.resolve(plain),
+        catch: (fn) => Promise.resolve(plain).catch(fn),
+        then: (fn) => Promise.resolve(plain).then(fn),
+      };
     },
 
     async countDocuments(filter = {}) {
       return col.filter(d => matchesFilter(d, filter)).length;
+    },
+
+    async aggregate(pipeline = []) {
+      let docs = [...col];
+
+      for (const stage of pipeline) {
+        if (stage.$match) {
+          docs = docs.filter(d => matchesFilter(d, stage.$match));
+        } else if (stage.$group) {
+          const grouped = {};
+          for (const doc of docs) {
+            const idExpr = stage.$group._id;
+            let key;
+            if (idExpr === null) {
+              key = '__all__';
+            } else if (typeof idExpr === 'string' && idExpr.startsWith('$')) {
+              key = String(doc[idExpr.slice(1)] ?? '__null__');
+            } else {
+              key = String(idExpr);
+            }
+            if (!grouped[key]) grouped[key] = { _id: key === '__all__' ? null : key, docs: [] };
+            grouped[key].docs.push(doc);
+          }
+          const results = [];
+          for (const [, g] of Object.entries(grouped)) {
+            const row = { _id: g._id };
+            for (const [field, expr] of Object.entries(stage.$group)) {
+              if (field === '_id') continue;
+              if (expr.$sum) {
+                const srcField = typeof expr.$sum === 'string' ? expr.$sum.replace('$','') : null;
+                row[field] = srcField ? g.docs.reduce((s,d) => s + (Number(d[srcField]) || 0), 0) : g.docs.length;
+              }
+              if (expr.$avg) {
+                const srcField = expr.$avg.replace('$','');
+                const vals = g.docs.map(d => Number(d[srcField])||0);
+                row[field] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+              }
+              if (expr.$min) {
+                const srcField = expr.$min.replace('$','');
+                row[field] = Math.min(...g.docs.map(d => Number(d[srcField])||0));
+              }
+              if (expr.$max) {
+                const srcField = expr.$max.replace('$','');
+                row[field] = Math.max(...g.docs.map(d => Number(d[srcField])||0));
+              }
+            }
+            results.push(row);
+          }
+          docs = results;
+        } else if (stage.$sort) {
+          const [sortField, sortDir] = Object.entries(stage.$sort)[0];
+          docs.sort((a,b) => (a[sortField] > b[sortField] ? sortDir : -sortDir));
+        } else if (stage.$limit) {
+          docs = docs.slice(0, stage.$limit);
+        }
+      }
+      return docs;
     },
 
     async updateOne(filter = {}, update = {}, options = {}) {
@@ -1054,6 +1145,458 @@ async function run() {
       assert(err.message.includes("Unknown nested operation"));
     }
     assert(threw);
+  });
+
+  // ── res.appendData() ─────────────────────────────────────────────────────────
+
+  console.log("\nres.appendData()");
+
+  await test("appendData merges payload into response _attachedData", async () => {
+    const testEntity = new MetaEntity("AppendDataTest", {});
+    let capturedRes = null;
+    testEntity.intercept("read", (req, res, next) => {
+      res.appendData({ role: "admin", permissions: ["read", "write"] });
+      capturedRes = res;
+      next();
+    });
+    const mockReq = { query: {}, params: {}, method: "GET", originalUrl: "/" };
+    const mockRes = { status: () => mockRes, json: () => {} };
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("read", mockReq, mockRes, resolve);
+    });
+    assert(mockRes._attachedData, "_attachedData should be set");
+    assertEqual(mockRes._attachedData.role, "admin");
+    assert(Array.isArray(mockRes._attachedData.permissions));
+    assertEqual(mockRes._attachedData.permissions.length, 2);
+  });
+
+  await test("multiple appendData calls are merged", async () => {
+    const testEntity = new MetaEntity("AppendDataMulti", {});
+    testEntity.intercept("read", (req, res, next) => {
+      res.appendData({ role: "admin" });
+      res.appendData({ plan: "pro" });
+      next();
+    });
+    const mockReq = { query: {}, params: {}, method: "GET", originalUrl: "/" };
+    const mockRes = { status: () => mockRes, json: () => {} };
+    await new Promise(resolve => {
+      testEntity._controller.applyInterceptors("read", mockReq, mockRes, resolve);
+    });
+    assertEqual(mockRes._attachedData.role, "admin");
+    assertEqual(mockRes._attachedData.plan, "pro");
+  });
+
+  await test("serverResponse merges _attachedData into data object", async () => {
+    const serverResponse = require("./dist/utils/serverResponse").default;
+    let sentBody = null;
+    const mockReq = { id: "r1", method: "GET", originalUrl: "/test" };
+    const mockRes = {
+      _attachedData: { role: "admin", plan: "pro" },
+      statusCode: 200,
+      status(code) { this.statusCode = code; return this; },
+      json(body) { sentBody = body; }
+    };
+    serverResponse.handleResponse(mockReq, mockRes, { uuid: "abc", title: "Test" }, "success", "ok");
+    assert(sentBody, "should have sent response");
+    assert(sentBody.data.uuid === "abc", "original data preserved");
+    assertEqual(sentBody.data.role, "admin", "appendData merged into data");
+    assertEqual(sentBody.data.plan, "pro", "appendData merged into data");
+  });
+
+  await test("serverResponse with no _attachedData behaves normally", async () => {
+    const serverResponse = require("./dist/utils/serverResponse").default;
+    let sentBody = null;
+    const mockReq = { id: "r1", method: "GET", originalUrl: "/test" };
+    const mockRes = {
+      status(code) { return this; },
+      json(body) { sentBody = body; }
+    };
+    serverResponse.handleResponse(mockReq, mockRes, { uuid: "xyz" }, "success", "ok");
+    assert(sentBody.data.uuid === "xyz");
+    assert(!sentBody.data.role, "no extra keys when no _attachedData");
+  });
+
+  // ── append query population ───────────────────────────────────────────────────
+
+  console.log("\nAppend population");
+
+  const { parseAppendParam, appendToOne, appendToMany } = require("./dist/core/AppendService");
+
+  await test("parseAppendParam - parses single directive", async () => {
+    const directives = parseAppendParam("customer-customerId");
+    assertEqual(directives.length, 1);
+    assertEqual(directives[0].collection, "customer");
+    assertEqual(directives[0].localField, "customerId");
+    assertEqual(directives[0].resultKey, "customer");
+  });
+
+  await test("parseAppendParam - no hyphen defaults to collectionId field", async () => {
+    const directives = parseAppendParam("library");
+    assertEqual(directives[0].localField, "libraryId");
+  });
+
+  await test("parseAppendParam - parses array of directives", async () => {
+    const directives = parseAppendParam(["customer-customerId", "owner-ownerId"]);
+    assertEqual(directives.length, 2);
+    assertEqual(directives[1].collection, "owner");
+    assertEqual(directives[1].localField, "ownerId");
+  });
+
+  await test("parseAppendParam - parses comma-separated in one string", async () => {
+    const directives = parseAppendParam("customer-customerId,owner-ownerId");
+    assertEqual(directives.length, 2);
+  });
+
+  await test("appendToOne - appends related document", async () => {
+    // Create a library and a book that references it
+    const libForAppend = await libService.create({ title_name: "Append Library", city: "Lagos" });
+    const bookForAppend = await bookService.create({ title_name: "Append Book", libraryId: libForAppend.uuid }, { skipValidation: true });
+
+    const plain = { ...bookForAppend.toObject ? bookForAppend.toObject() : bookForAppend };
+    const result = await appendToOne(plain, [{ collection: "Library", localField: "libraryId", resultKey: "library" }]);
+    assert(result.library, "library should be appended");
+    assertEqual(result.library.uuid, libForAppend.uuid);
+    assertEqual(result.library.title_name, "Append Library");
+  });
+
+  await test("appendToOne - returns null for missing related doc", async () => {
+    const plain = { uuid: "x", nonExistentId: "ghost-uuid" };
+    const result = await appendToOne(plain, [{ collection: "Library", localField: "nonExistentId", resultKey: "library" }]);
+    assert(result.library === null, "should be null for missing doc");
+  });
+
+  await test("appendToOne - returns null for unknown collection", async () => {
+    const plain = { uuid: "x", someId: "abc" };
+    const result = await appendToOne(plain, [{ collection: "NonExistentCollection", localField: "someId", resultKey: "nonexistent" }]);
+    assert(result.nonexistent === null, "should be null for unknown collection");
+  });
+
+  await test("appendToMany - batch fetches and stitches related docs", async () => {
+    const libA = await libService.create({ title_name: "Batch Lib A", city: "Abuja" });
+    const libB = await libService.create({ title_name: "Batch Lib B", city: "Lagos" });
+
+    const docs = [
+      { uuid: "b1", title_name: "Book 1", libraryId: libA.uuid },
+      { uuid: "b2", title_name: "Book 2", libraryId: libB.uuid },
+      { uuid: "b3", title_name: "Book 3", libraryId: libA.uuid },
+    ];
+
+    const results = await appendToMany(docs, [{ collection: "Library", localField: "libraryId", resultKey: "library" }]);
+    assertEqual(results.length, 3);
+    assertEqual(results[0].library.uuid, libA.uuid);
+    assertEqual(results[1].library.uuid, libB.uuid);
+    assertEqual(results[2].library.uuid, libA.uuid);
+    assert(results[0].library.title_name === "Batch Lib A");
+  });
+
+  await test("appendToMany - handles null localField values gracefully", async () => {
+    const docs = [
+      { uuid: "b1", libraryId: null },
+      { uuid: "b2", libraryId: undefined },
+    ];
+    const results = await appendToMany(docs, [{ collection: "Library", localField: "libraryId", resultKey: "library" }]);
+    assert(results[0].library === null);
+    assert(results[1].library === null);
+  });
+
+  await test("service.all() respects append option", async () => {
+    const libForAll = await libService.create({ title_name: "Service All Lib", city: "Enugu" });
+    await bookService.create({ title_name: "Service All Book", libraryId: libForAll.uuid }, { skipValidation: true });
+
+    const result = await bookService.all({
+      filter: { libraryId: libForAll.uuid },
+      append: "Library-libraryId"
+    });
+    assert(result.data.length >= 1, "should return books");
+    assert(result.data[0].library, "library should be appended");
+    assertEqual(result.data[0].library.uuid, libForAll.uuid);
+  });
+
+  await test("service.findById() respects append option", async () => {
+    const libForId = await libService.create({ title_name: "FindById Lib", city: "Port Harcourt" });
+    const bookForId = await bookService.create({ title_name: "FindById Book", libraryId: libForId.uuid }, { skipValidation: true });
+
+    const result = await bookService.findById(bookForId.uuid, {
+      append: "Library-libraryId"
+    });
+    assert(result, "should find book");
+    assert(result.library, "library should be appended");
+    assertEqual(result.library.uuid, libForId.uuid);
+  });
+
+  // ── Analysis ──────────────────────────────────────────────────────────────────
+
+  console.log("\nAnalysis");
+
+  // Use a unique collection name to avoid stale data from other tests
+  const financeEntity = new MetaEntity("FinanceAnalysis", {
+    additionalFields: {
+      amount:    { type: Number, default: 0 },
+      category:  { type: String, default: null },
+      job_status:{ type: String, default: "pending" },
+    },
+  });
+  const fin = financeEntity.service;
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24*60*60*1000);
+  const twoDaysAgo = new Date(now.getTime() - 48*60*60*1000);
+
+  // Clear collection before seeding
+  getCollection("FinanceAnalysis").length = 0;
+
+  // Seed data with explicit created_at for window matching
+  const fa = await fin.create({ title_name: "Payment A", amount: 5000, category: "income",  job_status: "completed" }, { skipValidation: true });
+  const fb = await fin.create({ title_name: "Payment B", amount: 3000, category: "income",  job_status: "completed" }, { skipValidation: true });
+  const fc = await fin.create({ title_name: "Expense A", amount: 1200, category: "expense", job_status: "in_progress" }, { skipValidation: true });
+  const fd = await fin.create({ title_name: "Old Payment", amount: 2000, category: "income", job_status: "completed" }, { skipValidation: true });
+  // Manually set created_at for window-based queries
+  const faDoc = getCollection("FinanceAnalysis").find(d => d.uuid === fa.uuid); if (faDoc) faDoc.created_at = now;
+  const fbDoc = getCollection("FinanceAnalysis").find(d => d.uuid === fb.uuid); if (fbDoc) fbDoc.created_at = now;
+  const fcDoc = getCollection("FinanceAnalysis").find(d => d.uuid === fc.uuid); if (fcDoc) fcDoc.created_at = now;
+  const fdDoc = getCollection("FinanceAnalysis").find(d => d.uuid === fd.uuid); if (fdDoc) fdDoc.created_at = twoDaysAgo;
+
+  const window7d = { from: new Date(now.getTime() - 7*24*60*60*1000), to: new Date(now.getTime() + 1000) };
+
+  await test("count - counts documents in window", async () => {
+    const result = await financeEntity.analyze({ type: "count", window: window7d });
+    assertEqual(result.type, "count");
+    assert(result.count >= 4, `expected >= 4, got ${result.count}`);
+    assert(result.window.from instanceof Date);
+  });
+
+  await test("growth - returns growthPercent and window pair", async () => {
+    const result = await financeEntity.analyze({ type: "growth", window: { from: yesterday, to: now } });
+    assertEqual(result.type, "growth");
+    assert(typeof result.growthPercent === "number");
+    assert(typeof result.growthAbsolute === "number");
+    assert(result.currentWindow && result.previousWindow);
+  });
+
+  await test("sum - sums a numeric field", async () => {
+    const result = await financeEntity.analyze({ type: "sum", field: "amount", window: window7d });
+    assertEqual(result.type, "sum");
+    assert(result.total >= 11200, `expected >= 11200, got ${result.total}`);
+    assertEqual(result.field, "amount");
+  });
+
+  await test("average - computes mean of field", async () => {
+    const result = await financeEntity.analyze({ type: "average", field: "amount", window: window7d });
+    assertEqual(result.type, "average");
+    assert(result.average > 0, "average should be positive");
+    assert(typeof result.count === "number");
+  });
+
+  await test("min_max - returns min, max, range", async () => {
+    const result = await financeEntity.analyze({ type: "min_max", field: "amount", window: window7d });
+    assertEqual(result.type, "min_max");
+    assert(result.min <= result.max);
+    assertEqual(result.range, result.max - result.min);
+    assert(result.min >= 1200);
+  });
+
+  await test("distribution - groups by field value", async () => {
+    const result = await financeEntity.analyze({ type: "distribution", groupBy: "category", window: window7d });
+    assertEqual(result.type, "distribution");
+    assert(Array.isArray(result.buckets));
+    assert(result.buckets.length >= 1);
+    assert(result.buckets.every(b => typeof b.percent === "number"));
+  });
+
+  await test("top - returns top N by field", async () => {
+    const result = await financeEntity.analyze({ type: "top", field: "amount", limit: 2, window: window7d });
+    assertEqual(result.type, "top");
+    assertEqual(result.limit, 2);
+    assert(result.items.length <= 2);
+    assert(result.items[0].amount >= result.items[result.items.length - 1].amount);
+  });
+
+  await test("rate - returns rate per interval", async () => {
+    const result = await financeEntity.analyze({ type: "rate", interval: "day", window: window7d });
+    assertEqual(result.type, "rate");
+    assert(typeof result.rate === "number");
+    assert(result.rate >= 0);
+    assertEqual(result.interval, "day");
+  });
+
+  await test("field_change - compares sum between periods", async () => {
+    const result = await financeEntity.analyze({ type: "field_change", field: "amount", window: { from: yesterday, to: now } });
+    assertEqual(result.type, "field_change");
+    assert(typeof result.deltaPercent === "number");
+    assert(typeof result.deltaAbsolute === "number");
+  });
+
+  await test("funnel - computes drop-off across stages", async () => {
+    const result = await financeEntity.analyze({
+      type: "funnel",
+      groupBy: "job_status",
+      stages: ["completed", "in_progress", "pending"],
+      window: window7d,
+    });
+    assertEqual(result.type, "funnel");
+    assert(Array.isArray(result.stages));
+    assertEqual(result.stages.length, 3);
+    assert(result.stages[0].dropoffPercent === 0, "first stage has no dropoff");
+    assert(result.stages.every(s => typeof s.percent === "number"));
+  });
+
+  await test("percentile - returns p50-p99", async () => {
+    const result = await financeEntity.analyze({ type: "percentile", field: "amount", window: window7d });
+    assertEqual(result.type, "percentile");
+    assert(result.p50 >= 0);
+    assert(result.p99 >= result.p50, "p99 should be >= p50");
+    assert(typeof result.count === "number");
+  });
+
+  await test("timeseries - returns bucketed points", async () => {
+    const result = await financeEntity.analyze({ type: "timeseries", interval: "day", window: window7d });
+    assertEqual(result.type, "timeseries");
+    assert(Array.isArray(result.points));
+    assert(result.points.length > 0);
+    assert(result.points.every(p => typeof p.value === "number" && typeof p.bucket === "string"));
+  });
+
+  await test("sum - throws when field missing", async () => {
+    let threw = false;
+    try { await financeEntity.analyze({ type: "sum" }); }
+    catch (e) { threw = true; assert(e.message.includes("field")); }
+    assert(threw);
+  });
+
+  await test("analysis threshold event fires when condition met", async () => {
+    let fired = false;
+    let capturedEntity = null;
+    financeEntity.trigger(["analysis.count_threshold"], (_ww, _wi, entity) => {
+      fired = true;
+      capturedEntity = entity;
+    });
+    await financeEntity.analyze({
+      type: "count",
+      window: window7d,
+      threshold: { metric: "count", operator: "gte", value: 1 },
+    });
+    await new Promise(r => setTimeout(r, 10));
+    assert(fired, "threshold event should fire when count >= 1");
+    assert(capturedEntity !== null);
+    financeEntity.events.removeAll();
+  });
+
+  await test("analysis threshold event does NOT fire when condition not met", async () => {
+    let fired = false;
+    financeEntity.trigger(["analysis.count_threshold"], () => { fired = true; });
+    await financeEntity.analyze({
+      type: "count",
+      window: window7d,
+      threshold: { metric: "count", operator: "gt", value: 99999 },
+    });
+    await new Promise(r => setTimeout(r, 10));
+    assert(!fired, "threshold event should not fire when condition not met");
+    financeEntity.events.removeAll();
+  });
+
+  await test("unknown analysis type throws", async () => {
+    let threw = false;
+    try { await financeEntity.analyze({ type: "wizard" }); }
+    catch(e) { threw = true; assert(e.message.includes("Unknown analysis type")); }
+    assert(threw);
+  });
+
+  await test("filter - count respects filter option", async () => {
+    const result = await financeEntity.analyze({
+      type: "count",
+      window: window7d,
+      filter: { category: "income" },
+    });
+    assertEqual(result.type, "count");
+    // Only income docs should match
+    assert(result.count >= 1, "should find income docs");
+    const allResult = await financeEntity.analyze({ type: "count", window: window7d });
+    assert(allResult.count > result.count, "filtered count should be less than total");
+  });
+
+  await test("filter - sum respects filter option", async () => {
+    const incomeResult = await financeEntity.analyze({
+      type: "sum",
+      field: "amount",
+      window: window7d,
+      filter: { category: "income" },
+    });
+    const expenseResult = await financeEntity.analyze({
+      type: "sum",
+      field: "amount",
+      window: window7d,
+      filter: { category: "expense" },
+    });
+    assert(incomeResult.total > 0, "income sum should be positive");
+    assert(expenseResult.total > 0, "expense sum should be positive");
+    assert(incomeResult.total !== expenseResult.total, "filtered sums should differ");
+  });
+
+  await test("filter - distribution respects filter option", async () => {
+    const result = await financeEntity.analyze({
+      type: "distribution",
+      groupBy: "job_status",
+      window: window7d,
+      filter: { category: "income" },
+    });
+    assertEqual(result.type, "distribution");
+    // Only income docs - should not include in_progress (which is expense)
+    const hasInProgress = result.buckets.some(b => b.value === "in_progress");
+    assert(!hasInProgress, "income filter should exclude in_progress job_status");
+  });
+
+  await test("filter - timeseries respects filter option", async () => {
+    const incomeTs = await financeEntity.analyze({
+      type: "timeseries",
+      interval: "day",
+      window: window7d,
+      filter: { category: "income" },
+    });
+    const allTs = await financeEntity.analyze({
+      type: "timeseries",
+      interval: "day",
+      window: window7d,
+    });
+    assertEqual(incomeTs.type, "timeseries");
+    const incomeTotal = incomeTs.points.reduce((s, p) => s + p.value, 0);
+    const allTotal    = allTs.points.reduce((s, p) => s + p.value, 0);
+    assert(allTotal >= incomeTotal, "unfiltered timeseries should have >= count");
+  });
+
+  await test("filter - funnel respects filter option", async () => {
+    const result = await financeEntity.analyze({
+      type: "funnel",
+      groupBy: "job_status",
+      stages: ["completed", "in_progress", "pending"],
+      window: window7d,
+      filter: { category: "income" },
+    });
+    // Only income category docs - in_progress stage should be 0
+    const inProgressStage = result.stages.find(s => s.value === "in_progress");
+    assert(inProgressStage !== undefined);
+    assertEqual(inProgressStage.count, 0, "income category has no in_progress docs");
+  });
+
+  await test("filter - growth respects filter option", async () => {
+    const result = await financeEntity.analyze({
+      type: "growth",
+      window: { from: yesterday, to: new Date(now.getTime() + 1000) },
+      filter: { category: "income" },
+    });
+    assertEqual(result.type, "growth");
+    assert(typeof result.growthPercent === "number");
+  });
+
+  await test("filter - top respects filter option", async () => {
+    const result = await financeEntity.analyze({
+      type: "top",
+      field: "amount",
+      limit: 5,
+      window: window7d,
+      filter: { category: "income" },
+    });
+    assertEqual(result.type, "top");
+    // All returned docs should be income
+    assert(result.items.every(i => i.category === "income"), "all top items should be income");
   });
 
   // ── Summary ───────────────────────────────────────────────────────────────────

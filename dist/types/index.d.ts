@@ -4,7 +4,24 @@ import Joi from "joi";
 export interface CustomRequest extends Request {
     id?: string;
 }
+/**
+ * Extended Response that carries an optional attachment payload.
+ * Call res.attach({ key: value }) inside any interceptor to merge
+ * extra data into the final response's data object.
+ *
+ * Multiple calls to res.attach() in the same request are merged together.
+ */
 export interface CustomResponse extends Response {
+    /**
+     * Accumulate extra data to be merged into response.data before the response
+     * is sent. Injected automatically by the interceptor pipeline on every request.
+     * Call this inside any interceptor:
+     *   res.appendData({ role: "admin", permissions: [...] })
+     * Multiple calls are merged together.
+     */
+    appendData?: (payload: Record<string, unknown>) => void;
+    /** Internal store — do not use directly */
+    _attachedData?: Record<string, unknown>;
 }
 export interface ResponseFormat {
     [key: string]: [number, string, boolean];
@@ -63,6 +80,13 @@ export interface QueryOptions extends PaginationOptions {
     includeChildren?: boolean | string[];
     childDepth?: number;
     childPagination?: Record<string, PaginationOptions>;
+    /**
+     * Append related documents from other collections.
+     * Format: "collectionName-localField"
+     * e.g. ["customer-customerId", "owner-ownerId"]
+     * Works for single-document and list responses.
+     */
+    append?: string | string[];
 }
 export interface CreateOptions {
     skipEvents?: boolean;

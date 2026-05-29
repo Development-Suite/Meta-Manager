@@ -88,6 +88,13 @@ export function parseQueryOptions(query: Record<string, unknown>): QueryOptions 
     opts.childPagination = childPagination;
   }
 
+  // Append directives: append=customer-customerId or append[]=...
+  if (query.append !== undefined) {
+    opts.append = Array.isArray(query.append)
+      ? (query.append as string[])
+      : String(query.append);
+  }
+
   // Arbitrary filter: filter[status]=active&filter[owned_by]=uuid
   const filter: Record<string, unknown> = {};
   for (const key of Object.keys(query)) {
@@ -122,4 +129,13 @@ export function buildSortObject(
   const s = sort || defaultSort;
   const o = order || defaultOrder;
   return { [s]: o === "asc" ? 1 : -1 };
+}
+
+
+
+import { parseAppendParam, AppendDirective } from "../core/AppendService";
+
+export function extractAppendDirectives(opts: import("../types").QueryOptions): AppendDirective[] {
+  if (!opts.append) return [];
+  return parseAppendParam(opts.append);
 }

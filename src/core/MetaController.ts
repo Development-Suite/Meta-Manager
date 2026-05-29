@@ -13,6 +13,8 @@ import serverResponse from "../utils/serverResponse";
 import { parseQueryOptions } from "../utils/queryParser";
 import { NestedOpsService } from "./NestedOpsService";
 import { NestedOpsController } from "./NestedOpsController";
+import { MetaAnalysisService } from "./MetaAnalysisService";
+import { AnalysisController } from "./AnalysisController";
 
 export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   readonly router: Router;
@@ -21,6 +23,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   constructor(
     private readonly service: IMetaService<T>,
     private readonly nestedOpsService: NestedOpsService<T>,
+    private readonly analysisService: MetaAnalysisService<T>,
     private readonly entityName: string,
     private readonly options: MetaEntityOptions
   ) {
@@ -88,6 +91,14 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     res: CustomResponse,
     next: NextFunction
   ): void {
+    // Inject appendData() onto every response so interceptors can append to data
+    if (!res.appendData) {
+      res._attachedData = {};
+      res.appendData = (payload: Record<string, unknown>): void => {
+        res._attachedData = { ...(res._attachedData || {}), ...payload };
+      };
+    }
+
     const middlewares = this.getInterceptors(action, req);
     if (middlewares.length === 0) return next();
 
@@ -124,6 +135,9 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
       (action, req) => this.getInterceptors(action as InterceptorAction, req)
     );
     nestedCtrl.mount(r);
+
+    const analysisCtrl = new AnalysisController<T>(this.analysisService, this.entityName);
+    analysisCtrl.mount(r);
   }
 
   private intercept(action: InterceptorAction) {

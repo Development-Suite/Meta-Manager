@@ -1525,6 +1525,131 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
         </div>
       </div>
 
+      <!-- APPENDDATA -->
+      <div class="page" id="page-appenddata">
+        <div class="doc-section">
+          <h1 class="page-title">Append Response</h1>
+          <p class="lead" id="appenddata-intro"></p>
+          <div class="notice" id="appenddata-merge-rule"></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title">example</h2>
+          <div class="example-block">
+            <div class="example-label"><i class="fa-solid fa-circle-dot"></i> interceptor injects user context</div>
+            <pre id="appenddata-example-pre"><code></code></pre>
+          </div>
+          <div class="section-divider"></div>
+          <h2 class="section-title">notes</h2>
+          <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>detail</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>injection</td><td>appendData is available on res inside every interceptor. No setup required.</td></tr>
+              <tr><td>merging</td><td>Multiple res.appendData() calls in the same request are merged. Later keys overwrite earlier ones.</td></tr>
+              <tr><td>data is object</td><td>Payload is spread directly into response.data.</td></tr>
+              <tr><td>data is array or primitive</td><td>Response is wrapped: { data: original, ...appendedPayload }.</td></tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPEND POPULATION -->
+      <div class="page" id="page-append">
+        <div class="doc-section">
+          <h1 class="page-title">Append Collection</h1>
+          <p class="lead" id="append-intro"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title">directive syntax</h2>
+          <p id="append-syntax-text" style="margin-bottom:var(--sp-sm)"></p>
+          <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>directive</th><th>collection</th><th>localField</th><th>result key</th></tr></thead>
+            <tbody>
+              <tr><td>Library-libraryId</td><td>Library</td><td>libraryId</td><td>library</td></tr>
+              <tr><td>user-ownedBy</td><td>user</td><td>ownedBy</td><td>user</td></tr>
+              <tr><td>library</td><td>library</td><td>libraryId (default)</td><td>library</td></tr>
+            </tbody>
+          </table>
+          </div>
+          <div class="section-divider"></div>
+          <h2 class="section-title">via HTTP</h2>
+          <div class="example-block">
+            <div class="example-label"><i class="fa-solid fa-network-wired"></i> query param</div>
+            <pre id="append-http-pre"><code></code></pre>
+          </div>
+          <div class="section-divider"></div>
+          <h2 class="section-title">via service</h2>
+          <div class="example-block">
+            <div class="example-label"><i class="fa-solid fa-code"></i> service option</div>
+            <pre id="append-service-pre"><code></code></pre>
+          </div>
+          <div class="section-divider"></div>
+          <h2 class="section-title">notes</h2>
+          <div class="doc-table-wrap">
+          <table class="doc-table">
+            <thead><tr><th>detail</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>N+1 prevention</td><td id="append-resolution-text"></td></tr>
+              <tr><td>non-MetaEntity collections</td><td id="append-nonmeta-text"></td></tr>
+              <tr><td>missing related doc</td><td>If no matching document is found the key is set to null.</td></tr>
+              <tr><td>unknown collection</td><td>If the collection name does not match any model the key is set to null.</td></tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ANALYSIS -->
+      <div class="page" id="page-analysis">
+        <div class="doc-section">
+          <h1 class="page-title">analysis</h1>
+          <p class="lead" id="analysis-intro"></p>
+
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-sliders"></i> common options</h2>
+          <div class="doc-table-wrap">
+            <table class="doc-table" id="analysis-options-table">
+              <thead><tr><th>option</th><th>type</th><th>note</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> analysis types</h2>
+          <div id="analysis-types-list"></div>
+
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-bell"></i> thresholds</h2>
+          <p id="analysis-threshold-intro"></p>
+          <div class="doc-table-wrap" style="margin-top:var(--sp-sm)">
+            <table class="doc-table" id="analysis-threshold-table">
+              <thead><tr><th>field</th><th>note</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div style="margin-top:var(--sp-sm)">
+            <div class="param-section-label">threshold events</div>
+            <div id="analysis-threshold-events" style="display:flex;flex-wrap:wrap;gap:var(--sp-xxs);margin-top:var(--sp-xxs)"></div>
+          </div>
+          <div class="example-block" style="margin-top:var(--sp-md)">
+            <div class="example-label"><i class="fa-solid fa-circle-dot"></i> threshold example</div>
+            <pre id="analysis-threshold-example"><code></code></pre>
+          </div>
+
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-network-wired"></i> HTTP endpoints</h2>
+          <p id="analysis-http-intro"></p>
+          <div class="example-block" style="margin-top:var(--sp-sm)">
+            <div class="example-label"><i class="fa-solid fa-arrow-right"></i> GET examples</div>
+            <pre id="analysis-http-get"><code></code></pre>
+          </div>
+          <div class="example-block" style="margin-top:var(--sp-sm)">
+            <div class="example-label"><i class="fa-solid fa-arrow-right"></i> POST with body</div>
+            <pre id="analysis-http-post"><code></code></pre>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -2003,6 +2128,87 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
       document.getElementById('sidebar').classList.toggle('open');
     };
 
+    // ── appendData page ────────────────────────────────────────────────────────────
+    function buildAppendData(ref) {
+      const ad = ref.appendData;
+      if (!ad) return;
+      document.getElementById('appenddata-intro').textContent = ad.intro;
+      document.getElementById('appenddata-merge-rule').innerHTML = '<strong>merge rule.</strong> ' + ad.mergeRule;
+      document.querySelector('#appenddata-example-pre code').textContent = ad.example;
+    }
+
+    // ── append population page ─────────────────────────────────────────────────────
+    function buildAppendPop(ref) {
+      const ap = ref.append;
+      if (!ap) return;
+      document.getElementById('append-intro').textContent = ap.intro;
+      document.getElementById('append-syntax-text').textContent = ap.syntax;
+      document.querySelector('#append-http-pre code').textContent = ap.httpExample;
+      document.querySelector('#append-service-pre code').textContent = ap.serviceExample;
+      document.getElementById('append-resolution-text').textContent = ap.resolution;
+      document.getElementById('append-nonmeta-text').textContent = ap.nonMetaCollections;
+    }
+
+    // ── analysis page ──────────────────────────────────────────────────────────────
+    function buildAnalysis(ref) {
+      const an = ref.analysis;
+      if (!an) return;
+
+      document.getElementById('analysis-intro').textContent = an.intro;
+
+      const optsTbody = document.querySelector('#analysis-options-table tbody');
+      an.commonOptions.forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.option}</td><td><code>${o.type}</code></td><td>${o.note}</td>`;
+        optsTbody.appendChild(tr);
+      });
+
+      const typesList = document.getElementById('analysis-types-list');
+      an.types.forEach(t => {
+        const div = document.createElement('div');
+        div.style.cssText = 'margin:var(--sp-lg) 0;padding-top:var(--sp-sm);border-top:1px solid var(--hairline-soft)';
+        div.innerHTML = `
+          <div style="display:flex;align-items:center;gap:var(--sp-xs);margin-bottom:var(--sp-xxs)">
+            <code style="background:rgba(218,41,28,0.08);border-color:rgba(218,41,28,0.2);color:var(--primary)">${t.id}</code>
+            <span style="font-size:13px;color:var(--body)">${t.summary}</span>
+          </div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:var(--sp-xxs)">
+            options: ${t.options.join(' &nbsp; ')}
+          </div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--body-strong);margin-bottom:var(--sp-xs)">
+            returns: ${t.result}
+          </div>
+          <div class="example-block">
+            <div class="example-label"><i class="fa-solid fa-code"></i> example</div>
+            <pre><code>${escHtml(t.example)}</code></pre>
+          </div>
+        `;
+        typesList.appendChild(div);
+      });
+
+      document.getElementById('analysis-threshold-intro').textContent = an.thresholds.intro;
+      const tTbody = document.querySelector('#analysis-threshold-table tbody');
+      an.thresholds.fields.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${f.field}</td><td>${f.note}</td>`;
+        tTbody.appendChild(tr);
+      });
+
+      const evDiv = document.getElementById('analysis-threshold-events');
+      an.thresholds.events.forEach(ev => {
+        const span = document.createElement('code');
+        span.style.cssText = 'background:rgba(218,41,28,0.08);border-color:rgba(218,41,28,0.2);color:var(--primary);margin:2px';
+        span.textContent = ev;
+        evDiv.appendChild(span);
+      });
+
+      document.querySelector('#analysis-threshold-example code').textContent = an.thresholds.example;
+
+      document.getElementById('analysis-http-intro').textContent = an.http.intro;
+      document.querySelector('#analysis-http-get code').textContent = an.http.getExample;
+      document.querySelector('#analysis-http-post code').textContent = an.http.postExample;
+    }
+
     // ── init ──────────────────────────────────────────────────────────────────────
     async function init() {
       const [coreRes, epRes, refRes] = await Promise.all([
@@ -2025,6 +2231,9 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
       buildRelations(REFERENCE);
       buildValidation(REFERENCE);
       buildTypescript(REFERENCE);
+      buildAppendData(REFERENCE);
+      buildAppendPop(REFERENCE);
+      buildAnalysis(REFERENCE);
 
       renderRoute(getRoute());
     }

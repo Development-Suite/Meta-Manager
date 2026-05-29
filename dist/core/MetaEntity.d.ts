@@ -2,7 +2,9 @@ import { Model } from "mongoose";
 import { Router } from "express";
 import { BaseEntityDocument, MetaEntityOptions, IMetaEntity, IMetaService, EventPath, CallbackForEvent, InterceptorAction, InterceptorCallback } from "../types";
 import { NestedOpPayload, NestedOpResult } from "../types/nestedOps";
+import { AnalysisOptions, AnalysisResult } from "../types/analysis";
 import { NestedOpsService } from "./NestedOpsService";
+import { MetaAnalysisService } from "./MetaAnalysisService";
 export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument> implements IMetaEntity<T> {
     readonly entityName: string;
     readonly model: Model<T>;
@@ -12,6 +14,7 @@ export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocumen
     private readonly _controller;
     private readonly options;
     readonly nestedOps: NestedOpsService<T>;
+    readonly analysis: MetaAnalysisService<T>;
     constructor(name: string, options?: MetaEntityOptions);
     private assertMongooseConnection;
     /**
@@ -33,6 +36,13 @@ export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocumen
      *   value: { _mmid: "abc123", "sub_services.0.basket_rate": 4000 }
      * });
      */
+    /**
+     * Run an analysis query directly via the service layer (no HTTP).
+     * @example
+     * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
+     * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
+     */
+    analyze(options: AnalysisOptions): Promise<AnalysisResult>;
     nested(id: string, payload: NestedOpPayload): Promise<NestedOpResult<T>>;
     /**
      * Apply multiple nested operations in one call (batched into as few DB

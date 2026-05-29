@@ -9,6 +9,7 @@ const MetaService_1 = require("./MetaService");
 const MetaController_1 = require("./MetaController");
 const EventEmitter_1 = require("./EventEmitter");
 const NestedOpsService_1 = require("./NestedOpsService");
+const MetaAnalysisService_1 = require("./MetaAnalysisService");
 const SchemaBuilder_1 = require("./SchemaBuilder");
 class MetaEntity {
     constructor(name, options = {}) {
@@ -23,7 +24,8 @@ class MetaEntity {
         this.events = new EventEmitter_1.MetaEventEmitter();
         this.service = new MetaService_1.MetaService(this.model, options, this.events, name);
         this.nestedOps = new NestedOpsService_1.NestedOpsService(this.model, this.events);
-        this._controller = new MetaController_1.MetaController(this.service, this.nestedOps, name, options);
+        this.analysis = new MetaAnalysisService_1.MetaAnalysisService(this.model, name, this.events);
+        this._controller = new MetaController_1.MetaController(this.service, this.nestedOps, this.analysis, name, options);
         this.controller = this._controller.router;
     }
     assertMongooseConnection() {
@@ -52,6 +54,15 @@ class MetaEntity {
      *   value: { _mmid: "abc123", "sub_services.0.basket_rate": 4000 }
      * });
      */
+    /**
+     * Run an analysis query directly via the service layer (no HTTP).
+     * @example
+     * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
+     * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
+     */
+    async analyze(options) {
+        return this.analysis.run(options);
+    }
     async nested(id, payload) {
         return this.nestedOps.apply(id, payload);
     }

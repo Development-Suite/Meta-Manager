@@ -11,6 +11,8 @@ import {
   ChildEntityConfig,
   ValidationResult,
 } from "../types";
+import { appendToOne, appendToMany } from "./AppendService";
+import { extractAppendDirectives } from "../utils/queryParser";
 import { MetaEventEmitter } from "./EventEmitter";
 import { MetaValidator } from "./MetaValidator";
 import {
@@ -133,10 +135,15 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     const { skip, limit, page } = this.buildPagination(opts);
     const projection = this.buildProjection(opts);
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model.find(filter, projection).sort(sort as any).skip(skip).limit(limit).lean() as Promise<T[]>,
       this.model.countDocuments(filter),
     ]);
+
+    const directives = extractAppendDirectives(opts);
+    const data = directives.length
+      ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
+      : rawData;
 
     return this.paginatedResult(data, total, page, limit);
   }
@@ -148,8 +155,16 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     const doc = await this.model.findOne(filter, projection);
     if (!doc) return null;
 
+    const directives = extractAppendDirectives(opts);
+
     if (opts.includeChildren) {
-      const plain = await this.populateChildren(doc, opts);
+      let plain = await this.populateChildren(doc, opts);
+      if (directives.length) plain = await appendToOne(plain, directives);
+      return plain as unknown as T;
+    }
+
+    if (directives.length) {
+      const plain = await appendToOne(this.toPlain(doc), directives);
       return plain as unknown as T;
     }
 
@@ -168,10 +183,15 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     const { skip, limit, page } = this.buildPagination(opts);
     const projection = this.buildProjection(opts);
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model.find(filter, projection).sort(sort as any).skip(skip).limit(limit).lean() as Promise<T[]>,
       this.model.countDocuments(filter),
     ]);
+
+    const directives = extractAppendDirectives(opts);
+    const data = directives.length
+      ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
+      : rawData;
 
     return this.paginatedResult(data, total, page, limit);
   }
@@ -193,10 +213,15 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
       filter = this.buildBaseFilter({ $text: { $search: query }, ...opts.filter });
     }
 
-    const [data, total] = await Promise.all([
+    const [rawData, total] = await Promise.all([
       this.model.find(filter).sort(sort as any).skip(skip).limit(limit).lean() as Promise<T[]>,
       this.model.countDocuments(filter),
     ]);
+
+    const directives = extractAppendDirectives(opts);
+    const data = directives.length
+      ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
+      : rawData;
 
     return this.paginatedResult(data, total, page, limit);
   }

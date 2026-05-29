@@ -7,17 +7,76 @@
     "install": "npm install @ubyjerome/meta-manager mongoose express"
   },
   "nav": [
-    { "id": "overview",     "label": "Overview",        "icon": "fa-house" },
-    { "id": "quickstart",   "label": "Quick start",     "icon": "fa-bolt" },
-    { "id": "entity",       "label": "Entity",          "icon": "fa-cube" },
-    { "id": "service",      "label": "Service",         "icon": "fa-layer-group" },
-    { "id": "endpoints",    "label": "Endpoints",       "icon": "fa-network-wired" },
-    { "id": "events",       "label": "Events",          "icon": "fa-bolt-lightning" },
-    { "id": "interceptors", "label": "Interceptors",    "icon": "fa-shield-halved" },
-    { "id": "nested",       "label": "Nested ops",      "icon": "fa-code-branch" },
-    { "id": "relations",    "label": "Relations",       "icon": "fa-diagram-project" },
-    { "id": "validation",   "label": "Validation",      "icon": "fa-circle-check" },
-    { "id": "typescript",   "label": "TypeScript",      "icon": "fa-code" }
+    {
+      "id": "overview",
+      "label": "Overview",
+      "icon": "fa-house"
+    },
+    {
+      "id": "quickstart",
+      "label": "Quick start",
+      "icon": "fa-bolt"
+    },
+    {
+      "id": "entity",
+      "label": "Entity",
+      "icon": "fa-cube"
+    },
+    {
+      "id": "service",
+      "label": "Service",
+      "icon": "fa-layer-group"
+    },
+    {
+      "id": "endpoints",
+      "label": "Endpoints",
+      "icon": "fa-network-wired"
+    },
+    {
+      "id": "events",
+      "label": "Events",
+      "icon": "fa-bolt-lightning"
+    },
+    {
+      "id": "interceptors",
+      "label": "Interceptors",
+      "icon": "fa-shield-halved"
+    },
+    {
+      "id": "nested",
+      "label": "Nested ops",
+      "icon": "fa-code-branch"
+    },
+    {
+      "id": "relations",
+      "label": "Relations",
+      "icon": "fa-diagram-project"
+    },
+    {
+      "id": "validation",
+      "label": "Validation",
+      "icon": "fa-circle-check"
+    },
+    {
+      "id": "typescript",
+      "label": "TypeScript",
+      "icon": "fa-code"
+    },
+    {
+      "id": "appenddata",
+      "label": "Append Response",
+      "icon": "fa-layer-group"
+    },
+    {
+      "id": "append",
+      "label": "Append Collection",
+      "icon": "fa-link"
+    },
+    {
+      "id": "analysis",
+      "label": "Entity Analysis",
+      "icon": "fa-chart-line"
+    }
   ],
   "concepts": [
     {

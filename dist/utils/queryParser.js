@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.parseQueryOptions = parseQueryOptions;
 exports.buildFieldProjection = buildFieldProjection;
 exports.buildSortObject = buildSortObject;
+exports.extractAppendDirectives = extractAppendDirectives;
 function parseQueryOptions(query) {
     const opts = {};
     // Pagination
@@ -87,6 +88,12 @@ function parseQueryOptions(query) {
     if (Object.keys(childPagination).length > 0) {
         opts.childPagination = childPagination;
     }
+    // Append directives: append=customer-customerId or append[]=...
+    if (query.append !== undefined) {
+        opts.append = Array.isArray(query.append)
+            ? query.append
+            : String(query.append);
+    }
     // Arbitrary filter: filter[status]=active&filter[owned_by]=uuid
     const filter = {};
     for (const key of Object.keys(query)) {
@@ -115,5 +122,11 @@ function buildSortObject(sort, order, defaultSort, defaultOrder) {
     const s = sort || defaultSort;
     const o = order || defaultOrder;
     return { [s]: o === "asc" ? 1 : -1 };
+}
+const AppendService_1 = require("../core/AppendService");
+function extractAppendDirectives(opts) {
+    if (!opts.append)
+        return [];
+    return (0, AppendService_1.parseAppendParam)(opts.append);
 }
 //# sourceMappingURL=queryParser.js.map

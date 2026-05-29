@@ -12,10 +12,12 @@ import {
   InterceptorCallback,
 } from "../types";
 import { NestedOpPayload, NestedOpResult } from "../types/nestedOps";
+import { AnalysisOptions, AnalysisResult } from "../types/analysis";
 import { MetaService } from "./MetaService";
 import { MetaController } from "./MetaController";
 import { MetaEventEmitter } from "./EventEmitter";
 import { NestedOpsService } from "./NestedOpsService";
+import { MetaAnalysisService } from "./MetaAnalysisService";
 import { buildSchema } from "./SchemaBuilder";
 
 export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
@@ -30,6 +32,7 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
   private readonly _controller: MetaController<T>;
   private readonly options: MetaEntityOptions;
   readonly nestedOps: NestedOpsService<T>;
+  readonly analysis: MetaAnalysisService<T>;
 
   constructor(name: string, options: MetaEntityOptions = {}) {
     this.entityName = name;
@@ -47,7 +50,8 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
     this.events = new MetaEventEmitter();
     this.service = new MetaService<T>(this.model, options, this.events, name);
     this.nestedOps = new NestedOpsService<T>(this.model, this.events);
-    this._controller = new MetaController<T>(this.service, this.nestedOps, name, options);
+    this.analysis  = new MetaAnalysisService<T>(this.model, name, this.events);
+    this._controller = new MetaController<T>(this.service, this.nestedOps, this.analysis, name, options);
     this.controller = this._controller.router;
   }
 
@@ -80,6 +84,16 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
    *   value: { _mmid: "abc123", "sub_services.0.basket_rate": 4000 }
    * });
    */
+  /**
+   * Run an analysis query directly via the service layer (no HTTP).
+   * @example
+   * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
+   * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
+   */
+  async analyze(options: AnalysisOptions): Promise<AnalysisResult> {
+    return this.analysis.run(options);
+  }
+
   async nested(id: string, payload: NestedOpPayload): Promise<NestedOpResult<T>> {
     return this.nestedOps.apply(id, payload);
   }

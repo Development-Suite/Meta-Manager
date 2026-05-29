@@ -3,6 +3,7 @@ export { MetaService } from "./core/MetaService";
 export { MetaEventEmitter } from "./core/EventEmitter";
 export { MetaValidator } from "./core/MetaValidator";
 export { NestedOpsService } from "./core/NestedOpsService";
+export { MetaAnalysisService } from "./core/MetaAnalysisService";
 export { buildSchema } from "./core/SchemaBuilder";
 
 export type {
@@ -35,4 +36,10 @@ export type {
 } from "./types";
 
 export type { NestedOperation, NestedOpPayload, NestedOpResult } from "./types/nestedOps";
+export type {
+  AnalysisType, AnalysisOptions, AnalysisResult, AnalysisThreshold, TimeWindow, TimeUnit,
+  CountResult, GrowthResult, SumResult, AverageResult, MinMaxResult,
+  DistributionResult, TimeseriesResult, TopResult, RateResult,
+  FieldChangeResult, FunnelResult, PercentileResult,
+} from "./types/analysis";
 export { resolveIntendedFields } from "./types";

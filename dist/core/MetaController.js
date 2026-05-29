@@ -9,10 +9,12 @@ const types_1 = require("../types");
 const serverResponse_1 = __importDefault(require("../utils/serverResponse"));
 const queryParser_1 = require("../utils/queryParser");
 const NestedOpsController_1 = require("./NestedOpsController");
+const AnalysisController_1 = require("./AnalysisController");
 class MetaController {
-    constructor(service, nestedOpsService, entityName, options) {
+    constructor(service, nestedOpsService, analysisService, entityName, options) {
         this.service = service;
         this.nestedOpsService = nestedOpsService;
+        this.analysisService = analysisService;
         this.entityName = entityName;
         this.options = options;
         this.interceptors = [];
@@ -60,6 +62,13 @@ class MetaController {
         return false;
     }
     applyInterceptors(action, req, res, next) {
+        // Inject appendData() onto every response so interceptors can append to data
+        if (!res.appendData) {
+            res._attachedData = {};
+            res.appendData = (payload) => {
+                res._attachedData = { ...(res._attachedData || {}), ...payload };
+            };
+        }
         const middlewares = this.getInterceptors(action, req);
         if (middlewares.length === 0)
             return next();
@@ -90,6 +99,8 @@ class MetaController {
         r.post("/:id/restore", this.intercept("update"), this.handleRestore.bind(this));
         const nestedCtrl = new NestedOpsController_1.NestedOpsController(this.nestedOpsService, this.entityName, (action, req) => this.getInterceptors(action, req));
         nestedCtrl.mount(r);
+        const analysisCtrl = new AnalysisController_1.AnalysisController(this.analysisService, this.entityName);
+        analysisCtrl.mount(r);
     }
     intercept(action) {
         return (req, res, next) => {

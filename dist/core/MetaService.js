@@ -1,9 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetaService = void 0;
+const AppendService_1 = require("./AppendService");
+const queryParser_1 = require("../utils/queryParser");
 const MetaValidator_1 = require("./MetaValidator");
 const helpers_1 = require("../utils/helpers");
-const queryParser_1 = require("../utils/queryParser");
+const queryParser_2 = require("../utils/queryParser");
 class MetaService {
     constructor(model, options, events, entityName) {
         this.model = model;
@@ -19,7 +21,7 @@ class MetaService {
         return f;
     }
     buildSort(opts) {
-        return (0, queryParser_1.buildSortObject)(opts.sort, opts.order, this.options.defaultSort || "created_at", this.options.defaultOrder || "desc");
+        return (0, queryParser_2.buildSortObject)(opts.sort, opts.order, this.options.defaultSort || "created_at", this.options.defaultOrder || "desc");
     }
     buildPagination(opts) {
         const page = Math.max(1, opts.page || 1);
@@ -27,7 +29,7 @@ class MetaService {
         return { skip: (page - 1) * limit, limit, page };
     }
     buildProjection(opts) {
-        return (0, queryParser_1.buildFieldProjection)(opts.fields);
+        return (0, queryParser_2.buildFieldProjection)(opts.fields);
     }
     toPlain(doc) {
         return doc.toObject ? doc.toObject() : { ...doc };
@@ -87,10 +89,14 @@ class MetaService {
         const sort = this.buildSort(opts);
         const { skip, limit, page } = this.buildPagination(opts);
         const projection = this.buildProjection(opts);
-        const [data, total] = await Promise.all([
+        const [rawData, total] = await Promise.all([
             this.model.find(filter, projection).sort(sort).skip(skip).limit(limit).lean(),
             this.model.countDocuments(filter),
         ]);
+        const directives = (0, queryParser_1.extractAppendDirectives)(opts);
+        const data = directives.length
+            ? (await (0, AppendService_1.appendToMany)(rawData, directives))
+            : rawData;
         return this.paginatedResult(data, total, page, limit);
     }
     async findById(id, opts = {}) {
@@ -99,8 +105,15 @@ class MetaService {
         const doc = await this.model.findOne(filter, projection);
         if (!doc)
             return null;
+        const directives = (0, queryParser_1.extractAppendDirectives)(opts);
         if (opts.includeChildren) {
-            const plain = await this.populateChildren(doc, opts);
+            let plain = await this.populateChildren(doc, opts);
+            if (directives.length)
+                plain = await (0, AppendService_1.appendToOne)(plain, directives);
+            return plain;
+        }
+        if (directives.length) {
+            const plain = await (0, AppendService_1.appendToOne)(this.toPlain(doc), directives);
             return plain;
         }
         return doc;
@@ -115,10 +128,14 @@ class MetaService {
         const sort = this.buildSort(opts);
         const { skip, limit, page } = this.buildPagination(opts);
         const projection = this.buildProjection(opts);
-        const [data, total] = await Promise.all([
+        const [rawData, total] = await Promise.all([
             this.model.find(filter, projection).sort(sort).skip(skip).limit(limit).lean(),
             this.model.countDocuments(filter),
         ]);
+        const directives = (0, queryParser_1.extractAppendDirectives)(opts);
+        const data = directives.length
+            ? (await (0, AppendService_1.appendToMany)(rawData, directives))
+            : rawData;
         return this.paginatedResult(data, total, page, limit);
     }
     async search(query, opts = {}) {
@@ -136,10 +153,14 @@ class MetaService {
         else {
             filter = this.buildBaseFilter({ $text: { $search: query }, ...opts.filter });
         }
-        const [data, total] = await Promise.all([
+        const [rawData, total] = await Promise.all([
             this.model.find(filter).sort(sort).skip(skip).limit(limit).lean(),
             this.model.countDocuments(filter),
         ]);
+        const directives = (0, queryParser_1.extractAppendDirectives)(opts);
+        const data = directives.length
+            ? (await (0, AppendService_1.appendToMany)(rawData, directives))
+            : rawData;
         return this.paginatedResult(data, total, page, limit);
     }
     async create(data, opts = {}) {

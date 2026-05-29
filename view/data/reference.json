@@ -242,5 +242,272 @@
     "eventPaths": "EventPath<T> produces a union of all valid event strings including typed dot-paths under update.*. TypeScript's IDE autocomplete surfaces these as suggestions.",
     "callbackTypes": "CallbackForEvent<T, E> resolves the correct callback signature for a given event string E. update.* callbacks receive non-null Partial<T> for both whatWas and whatIs. create and restore receive null. delete receives non-null whatWas and null whatIs.",
     "example": "import { MetaEntity, BaseEntityDocument } from \"@ubyjerome/meta-manager\";\nimport Joi from \"joi\";\n\ninterface BookDocument extends BaseEntityDocument {\n  isbn: string;\n  pageCount: number;\n  libraryId: string;\n}\n\nconst booksEntity = new MetaEntity<BookDocument>(\"books\", {\n  createSchema: {\n    title_name:  Joi.string().required(),\n    isbn:        Joi.string().optional(),\n    pageCount:   Joi.number().min(0).optional(),\n    libraryId:   Joi.string().required()\n  }\n});\n\n// service is fully typed as IMetaService<BookDocument>\nconst book = await booksEntity.service.findById(\"uuid\");\n// book is BookDocument | null\n\n// trigger is typed - IDE suggests valid event paths\nbooksEntity.trigger([\"update.isbn\"], (whatWas, whatIs, book) => {\n  // whatWas: Partial<BookDocument>  (non-null guaranteed)\n  // whatIs:  Partial<BookDocument>  (non-null guaranteed)\n  // book:    BookDocument\n});"
+  },
+  "appendData": {
+    "intro": "res.appendData() lets interceptors inject extra data that gets merged into the response data object before it is sent. It is injected onto every response automatically by the interceptor pipeline.",
+    "usage": "Call res.appendData({ key: value }) inside any interceptor. Multiple calls are merged together.",
+    "mergeRule": "If response.data is an object, the appendData payload is spread directly into it. If response.data is an array or primitive, it is wrapped: { data: originalData, ...appendedPayload }.",
+    "example": "booksEntity.intercept(\"read\", async (req, res, next) => {\n  const user = await UserService.getUserById(req.user.uuid)\n  res.appendData({\n    currentUser: { name: user.firstName, role: user.role, plan: user.subscriptionPlan }\n  })\n  next()\n})\n\n// The final response.data now contains:\n// { uuid: \"...\", title_name: \"...\",\n//   currentUser: { name: \"Amaka\", role: \"admin\", plan: \"pro\" } }"
+  },
+  "append": {
+    "intro": "The append query parameter and service option hydrates related documents from any MongoDB collection onto a response, without a schema-level relation. Works with MetaEntity collections and plain Mongoose models alike.",
+    "syntax": "Format per directive: collectionName-localField. collectionName is matched case-insensitively against mongoose.models. localField is the field on the source document whose value is the ID to look up. If no hyphen is present, localField defaults to collectionName + Id.",
+    "resultKey": "The related document is placed under a key equal to the lowercased collection name.",
+    "resolution": "For single-document responses a single findOne is issued per directive. For list responses a single $in batch query is issued per directive, eliminating N+1.",
+    "nonMetaCollections": "Any Mongoose model compiled in your application is addressable because the resolver reads from mongoose.models directly. The target collection does not need to be a MetaEntity.",
+    "httpExample": "GET /books/:id?append=Library-libraryId&append=user-ownedBy\n\n// Response data:\n// { uuid: \"...\", title_name: \"...\",\n//   library: { uuid: \"lib-uuid\", title_name: \"National Library\", ... },\n//   user: { uuid: \"...\", firstName: \"Amaka\", ... } }",
+    "serviceExample": "// Single document\nconst book = await bookService.findById(id, {\n  append: \"Library-libraryId\"\n})\n\n// List\nconst result = await bookService.all({\n  filter: { status: \"active\" },\n  append: [\"Library-libraryId\", \"user-ownedBy\"]\n})\n\n// Comma-separated string also works\nconst result = await bookService.findBy(\"status\", \"active\", {\n  append: \"Library-libraryId,user-ownedBy\"\n})"
+  },
+  "analysis": {
+    "intro": "Entity analysis runs aggregation queries against a collection and returns typed result objects. All analysis types respect an optional filter, a time window, and a date field. Results can trigger lifecycle events when a metric crosses a threshold.",
+    "types": [
+      {
+        "id": "count",
+        "label": "count",
+        "summary": "Total document count matching the filter in the given time window.",
+        "options": [
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, count, window }",
+        "example": "await entity.analyze({ type: \"count\", window: { from: \"2026-05-01\", to: \"2026-05-28\" } })"
+      },
+      {
+        "id": "growth",
+        "label": "growth",
+        "summary": "Percentage and absolute change in document count between the current window and the equal-length period immediately before it.",
+        "options": [
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, current, previous, growthPercent, growthAbsolute, currentWindow, previousWindow }",
+        "example": "await entity.analyze({ type: \"growth\", window: { from: yesterday, to: now } })\n// growthPercent: 33.33 means 33% more documents than the prior equal period"
+      },
+      {
+        "id": "sum",
+        "label": "sum",
+        "summary": "Sum of a numeric field across all matching documents in the window.",
+        "options": [
+          "field (required)",
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, field, total, count, window }",
+        "example": "await entity.analyze({ type: \"sum\", field: \"amount\",\n  filter: { category: \"income\" }, window: { from, to } })"
+      },
+      {
+        "id": "average",
+        "label": "average",
+        "summary": "Arithmetic mean of a numeric field.",
+        "options": [
+          "field (required)",
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, field, average, count, window }",
+        "example": "await entity.analyze({ type: \"average\", field: \"rating\", window: { from, to } })"
+      },
+      {
+        "id": "min_max",
+        "label": "min / max",
+        "summary": "Minimum, maximum, and range of a numeric field.",
+        "options": [
+          "field (required)",
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, field, min, max, range, count, window }",
+        "example": "await entity.analyze({ type: \"min_max\", field: \"amount\", filter: { category: \"expense\" } })"
+      },
+      {
+        "id": "distribution",
+        "label": "distribution",
+        "summary": "Count and percentage per distinct value of a field. Equivalent to GROUP BY with ORDER BY count DESC.",
+        "options": [
+          "groupBy or field (required)",
+          "window",
+          "dateField",
+          "filter",
+          "limit (default 20)",
+          "threshold"
+        ],
+        "result": "{ type, field, buckets: [{ value, count, percent }], total, window }",
+        "example": "await entity.analyze({ type: \"distribution\", groupBy: \"status\",\n  filter: { owned_by: userId }, window: { from, to } })"
+      },
+      {
+        "id": "timeseries",
+        "label": "timeseries",
+        "summary": "Document count or numeric field sum bucketed into equal time intervals over the window.",
+        "options": [
+          "interval (hour|day|week|month, default day)",
+          "metric (count|sum, default count)",
+          "field (required if metric=sum)",
+          "window",
+          "dateField",
+          "filter"
+        ],
+        "result": "{ type, interval, metric, field?, points: [{ bucket, value }], window }",
+        "example": "// Daily revenue over 30 days for a specific category\nawait entity.analyze({\n  type: \"timeseries\",\n  metric: \"sum\",\n  field: \"amount\",\n  interval: \"day\",\n  filter: { category: \"income\" },\n  window: { from: thirtyDaysAgo, to: now }\n})"
+      },
+      {
+        "id": "top",
+        "label": "top",
+        "summary": "Top N documents ranked by a numeric field in descending order.",
+        "options": [
+          "field (required)",
+          "limit (default 10)",
+          "window",
+          "dateField",
+          "filter"
+        ],
+        "result": "{ type, field, limit, items: Document[], window }",
+        "example": "// Top 5 highest-paying jobs this month\nawait entity.analyze({ type: \"top\", field: \"amount\", limit: 5,\n  filter: { job_status: \"completed\" }, window: { from: monthStart, to: now } })"
+      },
+      {
+        "id": "rate",
+        "label": "rate",
+        "summary": "Documents created per time unit over the window. E.g. average orders per day.",
+        "options": [
+          "interval (hour|day|week|month, default day)",
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, interval, rate, total, intervals, window }",
+        "example": "await entity.analyze({ type: \"rate\", interval: \"day\",\n  filter: { status: \"active\" }, window: { from: weekAgo, to: now } })\n// rate: 14.5 means 14.5 documents per day on average"
+      },
+      {
+        "id": "field_change",
+        "label": "field change",
+        "summary": "Absolute and percentage change in a numeric field's sum between the current window and the prior equal-length period.",
+        "options": [
+          "field (required)",
+          "window",
+          "dateField",
+          "filter",
+          "threshold"
+        ],
+        "result": "{ type, field, current, previous, deltaAbsolute, deltaPercent, currentWindow, previousWindow }",
+        "example": "// Revenue change vs prior 7 days\nawait entity.analyze({\n  type: \"field_change\",\n  field: \"amount\",\n  filter: { category: \"income\" },\n  window: { from: sevenDaysAgo, to: now }\n})"
+      },
+      {
+        "id": "funnel",
+        "label": "funnel",
+        "summary": "Conversion counts and drop-off percentages across an ordered sequence of field values. Useful for tracking status progressions.",
+        "options": [
+          "groupBy or field (required)",
+          "stages: string[] (required, min 2)",
+          "window",
+          "dateField",
+          "filter"
+        ],
+        "result": "{ type, field, stages: [{ value, count, percent, dropoffPercent }], window }",
+        "example": "await entity.analyze({\n  type: \"funnel\",\n  groupBy: \"job_status\",\n  stages: [\"pending\", \"accepted\", \"in_progress\", \"completed\"],\n  filter: { provider_id: providerId },\n  window: { from, to }\n})"
+      },
+      {
+        "id": "percentile",
+        "label": "percentile",
+        "summary": "p50, p75, p90, p95, and p99 distribution of a numeric field.",
+        "options": [
+          "field (required)",
+          "window",
+          "dateField",
+          "filter"
+        ],
+        "result": "{ type, field, p50, p75, p90, p95, p99, count, window }",
+        "example": "await entity.analyze({\n  type: \"percentile\",\n  field: \"response_time_ms\",\n  filter: { status: \"completed\" },\n  window: { from: dayAgo, to: now }\n})"
+      }
+    ],
+    "commonOptions": [
+      {
+        "option": "window",
+        "type": "{ from?, to? }",
+        "note": "Time window. from and to accept ISO strings or Date objects. Defaults to last 24h."
+      },
+      {
+        "option": "dateField",
+        "type": "string",
+        "note": "Document field used for window filtering. Defaults to created_at."
+      },
+      {
+        "option": "filter",
+        "type": "Record<string, unknown>",
+        "note": "Arbitrary filter applied to every query inside the analysis. Same as the filter option on service.all()."
+      },
+      {
+        "option": "field",
+        "type": "string",
+        "note": "The numeric field to aggregate. Required for sum, average, min_max, top, field_change, percentile, and timeseries with metric=sum."
+      },
+      {
+        "option": "groupBy",
+        "type": "string",
+        "note": "Field to group distinct values by. Required for distribution and funnel."
+      },
+      {
+        "option": "interval",
+        "type": "hour|day|week|month",
+        "note": "Time bucket size for timeseries and rate. Defaults to day."
+      },
+      {
+        "option": "limit",
+        "type": "number",
+        "note": "Max buckets for distribution, or top-N for top. Defaults to 10 or 20 depending on type."
+      },
+      {
+        "option": "stages",
+        "type": "string[]",
+        "note": "Ordered funnel stage values. Required for funnel. Min 2 values."
+      },
+      {
+        "option": "threshold",
+        "type": "AnalysisThreshold",
+        "note": "Fires analysis.{type}_threshold event when the named result metric crosses the given value."
+      }
+    ],
+    "thresholds": {
+      "intro": "Pass a threshold config to any analysis call. When the specified result metric crosses the threshold the analysis.{type}_threshold event fires on the entity's event emitter.",
+      "fields": [
+        {
+          "field": "metric",
+          "note": "Key on the result object to compare. e.g. count, total, growthPercent, rate, deltaPercent."
+        },
+        {
+          "field": "operator",
+          "note": "gt, gte, lt, lte, or eq."
+        },
+        {
+          "field": "value",
+          "note": "The number to compare against."
+        }
+      ],
+      "example": "// Alert when daily revenue drops below 50000\nawait revenueEntity.analyze({\n  type: \"sum\",\n  field: \"amount\",\n  window: { from: dayStart, to: dayEnd },\n  threshold: { metric: \"total\", operator: \"lt\", value: 50000 }\n})\n\nrevenueEntity.trigger([\"analysis.sum_threshold\"], (_ww, wi, result) => {\n  Alerts.send(`Daily revenue ${wi.value} is below threshold ${wi.threshold}`)\n})",
+      "events": [
+        "analysis.count_threshold",
+        "analysis.growth_threshold",
+        "analysis.sum_threshold",
+        "analysis.average_threshold",
+        "analysis.min_max_threshold",
+        "analysis.rate_threshold",
+        "analysis.field_change_threshold",
+        "analysis.percentile_threshold"
+      ]
+    },
+    "http": {
+      "intro": "Every entity automatically exposes GET and POST endpoints at /analysis/:type. Query params map directly to analysis options.",
+      "getExample": "# Count with filter and window\nGET /jobs/analysis/count?from=2026-05-01&to=2026-05-28&filter[status]=completed\n\n# Growth for a specific provider\nGET /jobs/analysis/growth?from=2026-05-14&to=2026-05-28&filter[provider_id]=uuid-here\n\n# Daily revenue timeseries for income category\nGET /transactions/analysis/timeseries?metric=sum&field=amount&interval=day&filter[category]=income&from=2026-05-01&to=2026-05-28\n\n# Funnel via GET with comma-separated stages\nGET /jobs/analysis/funnel?groupBy=job_status&stages=pending,accepted,in_progress,completed&from=2026-05-01&to=2026-05-28",
+      "postExample": "# POST supports larger filter/stages payloads in the body\nPOST /jobs/analysis/funnel\n{\n  \"groupBy\": \"job_status\",\n  \"stages\": [\"pending\", \"accepted\", \"in_progress\", \"completed\"],\n  \"from\": \"2026-05-01\",\n  \"to\": \"2026-05-28\",\n  \"filter\": { \"provider_id\": \"uuid-here\", \"category\": \"income\" },\n  \"threshold_metric\": \"count\",\n  \"threshold_operator\": \"lt\",\n  \"threshold_value\": 10\n}"
+    }
   }
 }
