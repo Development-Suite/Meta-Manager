@@ -312,7 +312,9 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
       (data as any).slug = generateSlug(String((data as any).title_name));
     }
 
-    Object.assign(existing, data);
+    // Use doc.set() instead of Object.assign so Mongoose's internal change-tracking
+    // picks up undeclared fields when strict:false is set on the schema.
+    existing.set(data);
     await existing.save();
 
     const after = this.toPlain(existing);
@@ -350,7 +352,7 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
 
     for (const doc of docs) {
       const before = this.toPlain(doc);
-      Object.assign(doc, data);
+      doc.set(data);
       await doc.save();
       const after = this.toPlain(doc);
 

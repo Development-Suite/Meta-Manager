@@ -22,6 +22,14 @@ function makeDoc(data) {
     deleted_at: data.deleted_at ?? null,
     status: data.status ?? "active",
     toObject() { return { ...this }; },
+    // Mimic Mongoose doc.set() - merges including undeclared fields (strict:false)
+    set(fields) {
+      if (fields && typeof fields === 'object') {
+        for (const [k, v] of Object.entries(fields)) {
+          this[k] = v;
+        }
+      }
+    },
     async save() {
       const store = collections[this.__collection];
       const idx = store.findIndex(d => d._id === this._id);
@@ -642,6 +650,28 @@ async function run() {
   await test("update returns null for missing id", async () => {
     const result = await libService.update("ghost-id", { description: "x" });
     assert(result === null);
+  });
+
+  await test("update stores undeclared fields not in additionalFields", async () => {
+    const updated = await libService.update(lib1.uuid, {
+      brand_new_field: "surprise",
+      nested_extra: { key: "value", num: 42 }
+    });
+    assert(updated, "should return updated doc");
+    assertEqual(updated.brand_new_field, "surprise", "undeclared field should be stored and returned");
+    assert(updated.nested_extra && updated.nested_extra.key === "value", "nested undeclared field should be stored");
+  });
+
+  await test("create stores undeclared fields not in additionalFields", async () => {
+    const doc = await libService.create({
+      title_name: "Dynamic Field Library",
+      city: "Ibadan",
+      surprise_field: "unexpected",
+      dynamic_config: { theme: "dark", version: 2 }
+    });
+    assert(doc.surprise_field === "unexpected", "undeclared field should persist on create");
+    assert(doc.dynamic_config && doc.dynamic_config.theme === "dark", "nested undeclared field should persist");
+    await libService.delete(doc.uuid, { soft: false });
   });
 
   await test("updateField sets a single field", async () => {

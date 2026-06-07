@@ -233,7 +233,9 @@ class MetaService {
         if (data.title_name) {
             data.slug = (0, helpers_1.generateSlug)(String(data.title_name));
         }
-        Object.assign(existing, data);
+        // Use doc.set() instead of Object.assign so Mongoose's internal change-tracking
+        // picks up undeclared fields when strict:false is set on the schema.
+        existing.set(data);
         await existing.save();
         const after = this.toPlain(existing);
         const diff = (0, helpers_1.deepDiff)(before, after);
@@ -261,7 +263,7 @@ class MetaService {
         const updated = [];
         for (const doc of docs) {
             const before = this.toPlain(doc);
-            Object.assign(doc, data);
+            doc.set(data);
             await doc.save();
             const after = this.toPlain(doc);
             if (!opts.skipEvents) {

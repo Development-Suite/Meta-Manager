@@ -1,6 +1,6 @@
 {
   "name": "@ubyjerome/meta-manager",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "MongoDB entity manager with REST, events, interceptors, and relations out of the box.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
