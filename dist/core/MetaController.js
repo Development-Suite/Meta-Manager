@@ -11,12 +11,14 @@ const queryParser_1 = require("../utils/queryParser");
 const NestedOpsController_1 = require("./NestedOpsController");
 const AnalysisController_1 = require("./AnalysisController");
 class MetaController {
-    constructor(service, nestedOpsService, analysisService, entityName, options) {
+    constructor(service, nestedOpsService, analysisService, entityName, options, fieldPolicy, auditLogSvc) {
         this.service = service;
         this.nestedOpsService = nestedOpsService;
         this.analysisService = analysisService;
         this.entityName = entityName;
         this.options = options;
+        this.fieldPolicy = fieldPolicy;
+        this.auditLogSvc = auditLogSvc;
         this.interceptors = [];
         this.router = (0, express_1.Router)();
         this.registerRoutes();
@@ -101,11 +103,52 @@ class MetaController {
         nestedCtrl.mount(r);
         const analysisCtrl = new AnalysisController_1.AnalysisController(this.analysisService, this.entityName);
         analysisCtrl.mount(r);
+        // Audit history endpoint
+        r.get("/:id/history", this.intercept("read"), this.handleGetHistory.bind(this));
     }
     intercept(action) {
         return (req, res, next) => {
             this.applyInterceptors(action, req, res, next);
         };
+    }
+    async serialise(data, req) {
+        const serialiser = this.options.serialiser;
+        if (!serialiser?.transform)
+            return data;
+        if (Array.isArray(data)) {
+            return Promise.all(data.map((d) => Promise.resolve(serialiser.transform(d, req))));
+        }
+        if (data && typeof data === "object" && "data" in data && "pagination" in data) {
+            // PaginatedResult
+            const pr = data;
+            const items = await Promise.all(pr.data.map((d) => Promise.resolve(serialiser.transform(d, req))));
+            return { ...pr, data: items };
+        }
+        if (data && typeof data === "object") {
+            return Promise.resolve(serialiser.transform(data, req));
+        }
+        return data;
+    }
+    async applyResponsePolicy(data, req) {
+        if (!this.fieldPolicy?.hasPolicy())
+            return data;
+        if (Array.isArray(data)) {
+            return this.fieldPolicy.applyReadPolicyToMany(data, req);
+        }
+        if (data && typeof data === "object" && "data" in data && "pagination" in data) {
+            const pr = data;
+            const stripped = await this.fieldPolicy.applyReadPolicyToMany(pr.data, req);
+            return { ...pr, data: stripped };
+        }
+        if (data && typeof data === "object") {
+            return this.fieldPolicy.applyReadPolicy(data, req);
+        }
+        return data;
+    }
+    async send(req, res, data, status, message) {
+        let out = await this.applyResponsePolicy(data, req);
+        out = await this.serialise(out, req);
+        serverResponse_1.default.handleResponse(req, res, out, status, message);
     }
     isJoiOrValidationError(err) {
         return (typeof err === "object" &&
@@ -116,7 +159,7 @@ class MetaController {
         try {
             const opts = (0, queryParser_1.parseQueryOptions)(req.query);
             const result = await this.service.all(opts);
-            serverResponse_1.default.handleResponse(req, res, result, "success", `${this.entityName} records retrieved`);
+            await this.send(req, res, result, "success", `${this.entityName} records retrieved`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -131,7 +174,7 @@ class MetaController {
             }
             const opts = (0, queryParser_1.parseQueryOptions)(req.query);
             const result = await this.service.search(q, opts);
-            serverResponse_1.default.handleResponse(req, res, result, "success", `Search results for "${q}"`);
+            await this.send(req, res, result, "success", `Search results for "${q}"`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -152,7 +195,7 @@ class MetaController {
             const { field, value } = req.params;
             const opts = (0, queryParser_1.parseQueryOptions)(req.query);
             const result = await this.service.findBy(field, value, opts);
-            serverResponse_1.default.handleResponse(req, res, result, "success", `Records where ${field}=${value}`);
+            await this.send(req, res, result, "success", `Records where ${field}=${value}`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -161,7 +204,7 @@ class MetaController {
     async handleCreate(req, res) {
         try {
             const doc = await this.service.create(req.body);
-            serverResponse_1.default.handleResponse(req, res, doc, "created", `${this.entityName} created`);
+            await this.send(req, res, doc, "created", `${this.entityName} created`);
         }
         catch (err) {
             if (this.isJoiOrValidationError(err)) {
@@ -184,7 +227,7 @@ class MetaController {
                 return;
             }
             const docs = await this.service.createMany(items);
-            serverResponse_1.default.handleResponse(req, res, docs, "created", `${docs.length} ${this.entityName} records created`);
+            await this.send(req, res, docs, "created", `${docs.length} ${this.entityName} records created`);
         }
         catch (err) {
             if (this.isJoiOrValidationError(err)) {
@@ -203,7 +246,7 @@ class MetaController {
                 serverResponse_1.default.handleError(req, res, "notFound", `${this.entityName} not found`);
                 return;
             }
-            serverResponse_1.default.handleResponse(req, res, doc, "success", `${this.entityName} retrieved`);
+            await this.send(req, res, doc, "success", `${this.entityName} retrieved`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -217,7 +260,7 @@ class MetaController {
                 serverResponse_1.default.handleError(req, res, "notFound", `${this.entityName} not found`);
                 return;
             }
-            serverResponse_1.default.handleResponse(req, res, doc, "success", `${this.entityName} with children retrieved`);
+            await this.send(req, res, doc, "success", `${this.entityName} with children retrieved`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -230,7 +273,7 @@ class MetaController {
                 serverResponse_1.default.handleError(req, res, "notFound", `${this.entityName} not found`);
                 return;
             }
-            serverResponse_1.default.handleResponse(req, res, doc, "success", `${this.entityName} updated`);
+            await this.send(req, res, doc, "success", `${this.entityName} updated`);
         }
         catch (err) {
             if (this.isJoiOrValidationError(err)) {
@@ -254,7 +297,7 @@ class MetaController {
                 serverResponse_1.default.handleError(req, res, "notFound", `${this.entityName} not found`);
                 return;
             }
-            serverResponse_1.default.handleResponse(req, res, doc, "success", `${this.entityName} field "${field}" updated`);
+            await this.send(req, res, doc, "success", `${this.entityName} field "${field}" updated`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -281,7 +324,7 @@ class MetaController {
                 serverResponse_1.default.handleError(req, res, "notFound", `${this.entityName} not found`);
                 return;
             }
-            serverResponse_1.default.handleResponse(req, res, doc, "success", `${this.entityName} restored`);
+            await this.send(req, res, doc, "success", `${this.entityName} restored`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
@@ -292,6 +335,23 @@ class MetaController {
             const { field, value } = req.params;
             const exists = await this.service.exists({ [field]: value });
             serverResponse_1.default.handleResponse(req, res, { exists }, "success", "Existence check complete");
+        }
+        catch (err) {
+            serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);
+        }
+    }
+    async handleGetHistory(req, res) {
+        try {
+            if (!this.auditLogSvc) {
+                serverResponse_1.default.handleError(req, res, "badRequest", `Audit log is not enabled for ${this.entityName}`);
+                return;
+            }
+            const { id } = req.params;
+            const limit = parseInt(String(req.query.limit || "20"), 10);
+            const page = parseInt(String(req.query.page || "1"), 10);
+            const event = req.query.event ? String(req.query.event) : undefined;
+            const result = await this.auditLogSvc.getHistory(id, { limit, page, event });
+            serverResponse_1.default.handleResponse(req, res, result, "success", `${this.entityName} history retrieved`);
         }
         catch (err) {
             serverResponse_1.default.handleError(req, res, "internalServerError", undefined, err);

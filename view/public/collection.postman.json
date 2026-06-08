@@ -288,6 +288,68 @@
           ]
         },
         {
+          "name": "Get History (Audit Log)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/{{entity}}/{{recordId}}/history?limit=20&page=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{entity}}",
+                "{{recordId}}",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Records per page (default: 20)"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "event",
+                  "value": "",
+                  "description": "Filter by event type: create, update, delete, restore",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve audit history for a specific record.\n\nRequires auditLog to be enabled on the entity.\n\nQuery params:\n  limit - records per page (default: 20)\n  page  - page number (default: 1)\n  event - optional filter: create, update, delete, restore\n\nReturns paginated audit records with the document's change history."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [\n      {\n        \"event\": \"create\",\n        \"entityId\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n        \"whatIs\": {\n          \"title_name\": \"Things Fall Apart\"\n        },\n        \"timestamp\": \"2026-04-27T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 5,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 1,\n      \"hasNext\": false,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"books history retrieved\"\n}"
+            },
+            {
+              "name": "400 Audit Not Enabled",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"isSuccess\": false,\n  \"status\": \"Bad Request\",\n  \"statusCode\": 400,\n  \"data\": [],\n  \"message\": \"Audit log is not enabled for books\"\n}"
+            }
+          ]
+        },
+        {
           "name": "Get By ID with Children",
           "request": {
             "method": "GET",

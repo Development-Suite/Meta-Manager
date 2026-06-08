@@ -3,15 +3,19 @@ import { CustomRequest, CustomResponse, InterceptorConfig, InterceptorAction, In
 import { IMetaService, BaseEntityDocument } from "../types";
 import { NestedOpsService } from "./NestedOpsService";
 import { MetaAnalysisService } from "./MetaAnalysisService";
+import { FieldPolicyService } from "./FieldPolicyService";
+import { AuditLogService } from "./AuditLogService";
 export declare class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     private readonly service;
     private readonly nestedOpsService;
     private readonly analysisService;
     private readonly entityName;
     private readonly options;
+    private readonly fieldPolicy?;
+    private readonly auditLogSvc?;
     readonly router: Router;
     readonly interceptors: InterceptorConfig[];
-    constructor(service: IMetaService<T>, nestedOpsService: NestedOpsService<T>, analysisService: MetaAnalysisService<T>, entityName: string, options: MetaEntityOptions);
+    constructor(service: IMetaService<T>, nestedOpsService: NestedOpsService<T>, analysisService: MetaAnalysisService<T>, entityName: string, options: MetaEntityOptions, fieldPolicy?: (FieldPolicyService | null) | undefined, auditLogSvc?: (AuditLogService | null) | undefined);
     addInterceptor(action: InterceptorAction | InterceptorAction[], callback: InterceptorCallback): void;
     /**
      * Returns the callbacks that should run for a given action and request.
@@ -27,6 +31,9 @@ export declare class MetaController<T extends BaseEntityDocument = BaseEntityDoc
     applyInterceptors(action: InterceptorAction, req: CustomRequest, res: CustomResponse, next: NextFunction): void;
     private registerRoutes;
     private intercept;
+    private serialise;
+    private applyResponsePolicy;
+    private send;
     private isJoiOrValidationError;
     private handleAll;
     private handleSearch;
@@ -41,5 +48,6 @@ export declare class MetaController<T extends BaseEntityDocument = BaseEntityDoc
     private handleDelete;
     private handleRestore;
     private handleExists;
+    private handleGetHistory;
 }
 //# sourceMappingURL=MetaController.d.ts.map

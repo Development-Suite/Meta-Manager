@@ -106,6 +106,25 @@ function buildSchema(options) {
         }
         schema.index(textIndex);
     }
+    // Schema version field for migration tracking
+    if (options.migrations && options.migrations.length > 0) {
+        fields.__schemaVersion = { type: Number, default: 0 };
+    }
+    // Register virtual fields
+    if (options.virtuals) {
+        for (const [name, def] of Object.entries(options.virtuals)) {
+            const virtDef = typeof def === "function"
+                ? { get: def }
+                : def;
+            const v = schema.virtual(name);
+            v.get(virtDef.get);
+            if (virtDef.set)
+                v.set(virtDef.set);
+        }
+        // Ensure virtuals appear in toObject() and toJSON() output
+        schema.set("toObject", { virtuals: true });
+        schema.set("toJSON", { virtuals: true });
+    }
     return schema;
 }
 //# sourceMappingURL=SchemaBuilder.js.map

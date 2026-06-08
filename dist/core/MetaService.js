@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MetaService = void 0;
 const AppendService_1 = require("./AppendService");
 const queryParser_1 = require("../utils/queryParser");
+const PopulationMiddleware_1 = require("./PopulationMiddleware");
+const MigrationService_1 = require("./MigrationService");
 const MetaValidator_1 = require("./MetaValidator");
 const helpers_1 = require("../utils/helpers");
 const queryParser_2 = require("../utils/queryParser");
@@ -13,6 +15,7 @@ class MetaService {
         this.events = events;
         this.entityName = entityName;
         this.validator = new MetaValidator_1.MetaValidator(options);
+        this.migrationSvc = new MigrationService_1.MigrationService(options.migrations || []);
     }
     buildBaseFilter(extra) {
         const f = { deleted_at: null };
@@ -94,9 +97,17 @@ class MetaService {
             this.model.countDocuments(filter),
         ]);
         const directives = (0, queryParser_1.extractAppendDirectives)(opts);
-        const data = directives.length
+        let data = directives.length
             ? (await (0, AppendService_1.appendToMany)(rawData, directives))
             : rawData;
+        // Schema-level population (auto-populate declared in entity options)
+        if (this.options.populate?.length) {
+            data = (await (0, PopulationMiddleware_1.applyPopulationToMany)(data, this.options.populate, opts));
+        }
+        // Lazy migrations
+        if (this.migrationSvc.hasMigrations()) {
+            data = (await this.migrationSvc.migrateMany(data));
+        }
         return this.paginatedResult(data, total, page, limit);
     }
     async findById(id, opts = {}) {
@@ -106,17 +117,22 @@ class MetaService {
         if (!doc)
             return null;
         const directives = (0, queryParser_1.extractAppendDirectives)(opts);
+        let plain = this.toPlain(doc);
         if (opts.includeChildren) {
-            let plain = await this.populateChildren(doc, opts);
-            if (directives.length)
-                plain = await (0, AppendService_1.appendToOne)(plain, directives);
-            return plain;
+            plain = await this.populateChildren(doc, opts);
         }
         if (directives.length) {
-            const plain = await (0, AppendService_1.appendToOne)(this.toPlain(doc), directives);
-            return plain;
+            plain = await (0, AppendService_1.appendToOne)(plain, directives);
         }
-        return doc;
+        // Schema-level population
+        if (this.options.populate?.length) {
+            plain = await (0, PopulationMiddleware_1.applyPopulationToOne)(plain, this.options.populate, opts);
+        }
+        // Lazy migration
+        if (this.migrationSvc.hasMigrations()) {
+            plain = await this.migrationSvc.migrateOne(plain);
+        }
+        return plain;
     }
     async findOne(filter, opts = {}) {
         const combined = this.buildBaseFilter(filter);
@@ -133,9 +149,15 @@ class MetaService {
             this.model.countDocuments(filter),
         ]);
         const directives = (0, queryParser_1.extractAppendDirectives)(opts);
-        const data = directives.length
+        let data = directives.length
             ? (await (0, AppendService_1.appendToMany)(rawData, directives))
             : rawData;
+        if (this.options.populate?.length) {
+            data = (await (0, PopulationMiddleware_1.applyPopulationToMany)(data, this.options.populate, opts));
+        }
+        if (this.migrationSvc.hasMigrations()) {
+            data = (await this.migrationSvc.migrateMany(data));
+        }
         return this.paginatedResult(data, total, page, limit);
     }
     async search(query, opts = {}) {
@@ -158,9 +180,15 @@ class MetaService {
             this.model.countDocuments(filter),
         ]);
         const directives = (0, queryParser_1.extractAppendDirectives)(opts);
-        const data = directives.length
+        let data = directives.length
             ? (await (0, AppendService_1.appendToMany)(rawData, directives))
             : rawData;
+        if (this.options.populate?.length) {
+            data = (await (0, PopulationMiddleware_1.applyPopulationToMany)(data, this.options.populate, opts));
+        }
+        if (this.migrationSvc.hasMigrations()) {
+            data = (await this.migrationSvc.migrateMany(data));
+        }
         return this.paginatedResult(data, total, page, limit);
     }
     async create(data, opts = {}) {

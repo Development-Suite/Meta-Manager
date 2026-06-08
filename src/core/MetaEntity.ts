@@ -13,11 +13,16 @@ import {
 } from "../types";
 import { NestedOpPayload, NestedOpResult } from "../types/nestedOps";
 import { AnalysisOptions, AnalysisResult } from "../types/analysis";
+import { AuditLogOptions, ScopedServiceOptions } from "../types/features";
 import { MetaService } from "./MetaService";
 import { MetaController } from "./MetaController";
 import { MetaEventEmitter } from "./EventEmitter";
 import { NestedOpsService } from "./NestedOpsService";
 import { MetaAnalysisService } from "./MetaAnalysisService";
+import { AuditLogService } from "./AuditLogService";
+import { WebhookService, patchEmitterForWebhooks } from "./WebhookService";
+import { FieldPolicyService } from "./FieldPolicyService";
+import { ScopedMetaService } from "./ScopedMetaService";
 import { buildSchema } from "./SchemaBuilder";
 
 export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
@@ -33,6 +38,8 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
   private readonly options: MetaEntityOptions;
   readonly nestedOps: NestedOpsService<T>;
   readonly analysis: MetaAnalysisService<T>;
+  readonly auditLog: AuditLogService | null;
+  private readonly fieldPolicySvc: FieldPolicyService | null;
 
   constructor(name: string, options: MetaEntityOptions = {}) {
     this.entityName = name;
@@ -51,7 +58,35 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
     this.service = new MetaService<T>(this.model, options, this.events, name);
     this.nestedOps = new NestedOpsService<T>(this.model, this.events);
     this.analysis  = new MetaAnalysisService<T>(this.model, name, this.events);
-    this._controller = new MetaController<T>(this.service, this.nestedOps, this.analysis, name, options);
+
+    // Field policy service
+    this.fieldPolicySvc = options.fieldPolicy
+      ? new FieldPolicyService(options.fieldPolicy)
+      : null;
+
+    // Audit log
+    const auditOpts = options.auditLog === true
+      ? { enabled: true } as AuditLogOptions
+      : options.auditLog || null;
+    this.auditLog = auditOpts?.enabled
+      ? new AuditLogService(name, this.events, auditOpts)
+      : null;
+
+    // Webhooks — patch emitter first so __lastEvent tag is available
+    if (options.webhooks?.length) {
+      patchEmitterForWebhooks(this.events);
+      new WebhookService(name, this.events, options.webhooks);
+    }
+
+    this._controller = new MetaController<T>(
+      this.service,
+      this.nestedOps,
+      this.analysis,
+      name,
+      options,
+      this.fieldPolicySvc,
+      this.auditLog
+    );
     this.controller = this._controller.router;
   }
 
@@ -90,6 +125,33 @@ export class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument>
    * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
    * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
    */
+  /**
+   * Returns a service pre-scoped to the caller identified by the request.
+   * Automatically fills created_by, updated_by, added_by.
+   * Enforces field-level read and write policies.
+   */
+  serviceFor(req: import("../types").CustomRequest): import("../types").IMetaService<T> {
+    const scopeOpts: ScopedServiceOptions = this.options.scopedService || {};
+    return new ScopedMetaService<T>(
+      this.service,
+      req,
+      this.fieldPolicySvc,
+      scopeOpts
+    );
+  }
+
+  /**
+   * Fetch audit history for a specific document.
+   * Only available when auditLog is enabled.
+   */
+  async getHistory(
+    entityId: string,
+    options?: { limit?: number; page?: number; event?: string }
+  ): Promise<{ data: import("../types/features").AuditRecord[]; total: number }> {
+    if (!this.auditLog) return { data: [], total: 0 };
+    return this.auditLog.getHistory(entityId, options);
+  }
+
   async analyze(options: AnalysisOptions): Promise<AnalysisResult> {
     return this.analysis.run(options);
   }

@@ -15,6 +15,9 @@ import { NestedOpsService } from "./NestedOpsService";
 import { NestedOpsController } from "./NestedOpsController";
 import { MetaAnalysisService } from "./MetaAnalysisService";
 import { AnalysisController } from "./AnalysisController";
+import { FieldPolicyService } from "./FieldPolicyService";
+import { SerialiserOptions } from "../types/features";
+import { AuditLogService } from "./AuditLogService";
 
 export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   readonly router: Router;
@@ -25,7 +28,9 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     private readonly nestedOpsService: NestedOpsService<T>,
     private readonly analysisService: MetaAnalysisService<T>,
     private readonly entityName: string,
-    private readonly options: MetaEntityOptions
+    private readonly options: MetaEntityOptions,
+    private readonly fieldPolicy?: FieldPolicyService | null,
+    private readonly auditLogSvc?: AuditLogService | null
   ) {
     this.router = Router();
     this.registerRoutes();
@@ -138,12 +143,73 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
 
     const analysisCtrl = new AnalysisController<T>(this.analysisService, this.entityName);
     analysisCtrl.mount(r);
+
+    // Audit history endpoint
+    r.get("/:id/history", this.intercept("read"), this.handleGetHistory.bind(this));
   }
 
   private intercept(action: InterceptorAction) {
     return (req: CustomRequest, res: CustomResponse, next: NextFunction): void => {
       this.applyInterceptors(action, req, res, next);
     };
+  }
+
+  private async serialise(data: unknown, req: CustomRequest): Promise<unknown> {
+    const serialiser = this.options.serialiser as SerialiserOptions | undefined;
+    if (!serialiser?.transform) return data;
+
+    if (Array.isArray(data)) {
+      return Promise.all(data.map((d) =>
+        Promise.resolve(serialiser.transform(d as any, req))
+      ));
+    }
+
+    if (data && typeof data === "object" && "data" in (data as any) && "pagination" in (data as any)) {
+      // PaginatedResult
+      const pr = data as any;
+      const items = await Promise.all(
+        pr.data.map((d: any) => Promise.resolve(serialiser.transform(d, req)))
+      );
+      return { ...pr, data: items };
+    }
+
+    if (data && typeof data === "object") {
+      return Promise.resolve(serialiser.transform(data as any, req));
+    }
+
+    return data;
+  }
+
+  private async applyResponsePolicy(data: unknown, req: CustomRequest): Promise<unknown> {
+    if (!this.fieldPolicy?.hasPolicy()) return data;
+
+    if (Array.isArray(data)) {
+      return this.fieldPolicy.applyReadPolicyToMany(data as Record<string, unknown>[], req);
+    }
+
+    if (data && typeof data === "object" && "data" in (data as any) && "pagination" in (data as any)) {
+      const pr = data as any;
+      const stripped = await this.fieldPolicy.applyReadPolicyToMany(pr.data, req);
+      return { ...pr, data: stripped };
+    }
+
+    if (data && typeof data === "object") {
+      return this.fieldPolicy.applyReadPolicy(data as Record<string, unknown>, req);
+    }
+
+    return data;
+  }
+
+  private async send(
+    req: CustomRequest,
+    res: CustomResponse,
+    data: unknown,
+    status: string,
+    message: string
+  ): Promise<void> {
+    let out = await this.applyResponsePolicy(data, req);
+    out = await this.serialise(out, req);
+    serverResponse.handleResponse(req, res, out, status, message);
   }
 
   private isJoiOrValidationError(err: unknown): boolean {
@@ -158,7 +224,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
     try {
       const opts = parseQueryOptions(req.query as Record<string, unknown>);
       const result = await this.service.all(opts);
-      serverResponse.handleResponse(req, res, result, "success", `${this.entityName} records retrieved`);
+      await this.send(req, res, result, "success", `${this.entityName} records retrieved`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -173,7 +239,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
       }
       const opts = parseQueryOptions(req.query as Record<string, unknown>);
       const result = await this.service.search(q, opts);
-      serverResponse.handleResponse(req, res, result, "success", `Search results for "${q}"`);
+      await this.send(req, res, result, "success", `Search results for "${q}"`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -194,7 +260,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
       const { field, value } = req.params;
       const opts = parseQueryOptions(req.query as Record<string, unknown>);
       const result = await this.service.findBy(field, value, opts);
-      serverResponse.handleResponse(req, res, result, "success", `Records where ${field}=${value}`);
+      await this.send(req, res, result, "success", `Records where ${field}=${value}`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -203,7 +269,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
   private async handleCreate(req: CustomRequest, res: CustomResponse): Promise<void> {
     try {
       const doc = await this.service.create(req.body);
-      serverResponse.handleResponse(req, res, doc, "created", `${this.entityName} created`);
+      await this.send(req, res, doc, "created", `${this.entityName} created`);
     } catch (err: any) {
       if (this.isJoiOrValidationError(err)) {
         serverResponse.handleError(req, res, "badRequest", err.message, err as Error);
@@ -224,7 +290,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         return;
       }
       const docs = await this.service.createMany(items);
-      serverResponse.handleResponse(req, res, docs, "created", `${docs.length} ${this.entityName} records created`);
+      await this.send(req, res, docs, "created", `${docs.length} ${this.entityName} records created`);
     } catch (err: any) {
       if (this.isJoiOrValidationError(err)) {
         serverResponse.handleError(req, res, "badRequest", err.message, err as Error);
@@ -242,7 +308,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         serverResponse.handleError(req, res, "notFound", `${this.entityName} not found`);
         return;
       }
-      serverResponse.handleResponse(req, res, doc, "success", `${this.entityName} retrieved`);
+      await this.send(req, res, doc, "success", `${this.entityName} retrieved`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -256,7 +322,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         serverResponse.handleError(req, res, "notFound", `${this.entityName} not found`);
         return;
       }
-      serverResponse.handleResponse(req, res, doc, "success", `${this.entityName} with children retrieved`);
+      await this.send(req, res, doc, "success", `${this.entityName} with children retrieved`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -269,7 +335,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         serverResponse.handleError(req, res, "notFound", `${this.entityName} not found`);
         return;
       }
-      serverResponse.handleResponse(req, res, doc, "success", `${this.entityName} updated`);
+      await this.send(req, res, doc, "success", `${this.entityName} updated`);
     } catch (err: any) {
       if (this.isJoiOrValidationError(err)) {
         serverResponse.handleError(req, res, "badRequest", err.message, err as Error);
@@ -292,7 +358,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         serverResponse.handleError(req, res, "notFound", `${this.entityName} not found`);
         return;
       }
-      serverResponse.handleResponse(req, res, doc, "success", `${this.entityName} field "${field}" updated`);
+      await this.send(req, res, doc, "success", `${this.entityName} field "${field}" updated`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -319,7 +385,7 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
         serverResponse.handleError(req, res, "notFound", `${this.entityName} not found`);
         return;
       }
-      serverResponse.handleResponse(req, res, doc, "success", `${this.entityName} restored`);
+      await this.send(req, res, doc, "success", `${this.entityName} restored`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }
@@ -330,6 +396,23 @@ export class MetaController<T extends BaseEntityDocument = BaseEntityDocument> {
       const { field, value } = req.params;
       const exists = await this.service.exists({ [field]: value });
       serverResponse.handleResponse(req, res, { exists }, "success", "Existence check complete");
+    } catch (err) {
+      serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
+    }
+  }
+
+  private async handleGetHistory(req: CustomRequest, res: CustomResponse): Promise<void> {
+    try {
+      if (!this.auditLogSvc) {
+        serverResponse.handleError(req, res, "badRequest", `Audit log is not enabled for ${this.entityName}`);
+        return;
+      }
+      const { id } = req.params;
+      const limit = parseInt(String(req.query.limit || "20"), 10);
+      const page  = parseInt(String(req.query.page  || "1"),  10);
+      const event = req.query.event ? String(req.query.event) : undefined;
+      const result = await this.auditLogSvc.getHistory(id, { limit, page, event });
+      serverResponse.handleResponse(req, res, result, "success", `${this.entityName} history retrieved`);
     } catch (err) {
       serverResponse.handleError(req, res, "internalServerError", undefined, err as Error);
     }

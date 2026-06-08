@@ -60,6 +60,9 @@ export class AnalysisController<T extends BaseEntityDocument = BaseEntityDocumen
 
     // Filter: filter[status]=active in query OR filter: {} in body
     const filterFromQuery: Record<string, unknown> = {};
+    if (q.filter && typeof q.filter === "object" && !Array.isArray(q.filter)) {
+      Object.assign(filterFromQuery, q.filter as Record<string, unknown>);
+    }
     for (const key of Object.keys(q)) {
       const m = key.match(/^filter\[(.+)\]$/);
       if (m) filterFromQuery[m[1]] = q[key];

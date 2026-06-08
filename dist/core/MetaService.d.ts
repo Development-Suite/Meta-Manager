@@ -7,6 +7,7 @@ export declare class MetaService<T extends BaseEntityDocument = BaseEntityDocume
     private readonly events;
     private readonly entityName;
     private readonly validator;
+    private readonly migrationSvc;
     constructor(model: Model<T>, options: MetaEntityOptions, events: MetaEventEmitter, entityName: string);
     private buildBaseFilter;
     private buildSort;

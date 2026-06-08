@@ -198,8 +198,14 @@
       color: var(--ink);
     }
 
-    #topbar .gh-link {
+    .topbar-links {
       margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-xs);
+    }
+
+    #topbar .gh-link {
       color: var(--muted);
       font-size: 16px;
       text-decoration: none;
@@ -526,6 +532,73 @@
 
     .btn-outline:hover {
       border-color: var(--body);
+    }
+
+    .hero-ai-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: var(--sp-md);
+      max-width: 520px;
+      line-height: 1.5;
+      display: flex;
+      align-items: center;
+      gap: var(--sp-xxs);
+    }
+    .hero-ai-note i {
+      color: var(--primary);
+      font-size: 11px;
+    }
+
+    .download-dropdown {
+      position: relative;
+      display: inline-flex;
+    }
+    .dropdown-trigger {
+      cursor: pointer;
+    }
+    .dropdown-arrow {
+      font-size: 10px;
+      margin-left: var(--sp-xxs);
+      transition: transform 0.15s;
+    }
+    .download-dropdown.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      background: var(--canvas-elevated);
+      border: 1px solid var(--hairline);
+      min-width: 220px;
+      z-index: 200;
+      padding: var(--sp-xxs) 0;
+    }
+    .download-dropdown.open .dropdown-menu {
+      display: block;
+    }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-xxs);
+      padding: 10px var(--sp-md);
+      color: var(--body);
+      text-decoration: none;
+      font-size: 13px;
+      transition: background 0.1s, color 0.1s;
+    }
+    .dropdown-item:hover {
+      background: rgba(255,255,255,0.03);
+      color: var(--ink);
+    }
+    .dropdown-item i {
+      width: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .dropdown-item:hover i {
+      color: var(--primary);
     }
 
     /* ── code blocks ─────────────────────────────────────────── */
@@ -1102,11 +1175,15 @@
     </button>
     <a class="wordmark" href="#" onclick="navigate('overview')">
       <span>Meta Manager</span>
-      <span class="version" id="pkg-version">v0.2.0</span>
+      <span class="version" id="pkg-version">v3.0.0</span>
     </a>
 
-    <a class="gh-link" href="https://www.npmjs.com/package/@ubyjerome/meta-manager" target="_blank" title="npm"><i
-        class="fa-brands fa-npm"></i></a>
+    <div class="topbar-links">
+      <a class="gh-link" href="https://github.com/Development-Suite/Meta-Manager" target="_blank" title="GitHub"><i
+          class="fa-brands fa-github"></i></a>
+      <a class="gh-link" href="https://www.npmjs.com/package/@ubyjerome/meta-manager" target="_blank" title="npm"><i
+          class="fa-brands fa-npm"></i></a>
+    </div>
   </header>
 
   <!-- layout -->
@@ -1133,6 +1210,8 @@
             <button class="copy-btn" id="copy-btn" aria-label="copy"><i class="fa-regular fa-copy"></i></button>
           </div>
 
+          <p class="hero-ai-note">AI agents can use meta-manager to scaffold production-ready backends from a single entity declaration. Integrate this skill into your toolchain.</p>
+
           <div class="hero-actions">
             <a class="btn-primary" onclick="navigate('quickstart')">
               Quick start
@@ -1140,6 +1219,20 @@
             <a class="btn-outline" onclick="navigate('endpoints')">
               <i class="fa-solid fa-network-wired"></i> Endpoints
             </a>
+            <div class="download-dropdown">
+              <button class="btn-outline dropdown-trigger" onclick="toggleDropdown(event)">
+                <i class="fa-solid fa-download"></i> Download resources
+                <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+              </button>
+              <div class="dropdown-menu" id="download-menu">
+                <a class="dropdown-item" href="./public/SKILL.md" download="meta-manager-SKILL.md">
+                  <i class="fa-solid fa-robot"></i> SKILL.md
+                </a>
+                <a class="dropdown-item" href="./public/collection.postman.json" download="meta-manager-postman.json">
+                  <i class="fa-solid fa-bolt"></i> Postman collection
+                </a>
+              </div>
+            </div>
           </div>
         </div>
         <div class="doc-section">
@@ -1336,6 +1429,10 @@ entity.<span class="fn">nestedBatch</span>(id, payloads)</code></pre>
           <h2 class="section-title">notes</h2>
           <ul id="interceptors-notes" style="padding-left: 20px; color: var(--body); font-size: 14px; line-height: 2;">
           </ul>
+          <div class="section-divider"></div>
+          <h2 class="section-title">field resolution per route</h2>
+          <p>When a field-targeted interceptor pattern like <code>update.provider_id</code> is registered, the field name is extracted from the request differently depending on which route is hit.</p>
+          <div id="interceptors-field-resolution"></div>
           <div class="section-divider"></div>
           <h2 class="section-title">examples</h2>
           <div id="interceptors-examples"></div>
@@ -1649,6 +1746,157 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
             <div class="example-label"><i class="fa-solid fa-arrow-right"></i> POST with body</div>
             <pre id="analysis-http-post"><code></code></pre>
           </div>
+        </div>
+      </div>
+
+      <!-- POPULATION -->
+      <div class="page" id="page-population">
+        <div class="doc-section">
+          <h1 class="page-title">schema-level population</h1>
+          <p class="lead" id="population-intro"></p>
+          <div class="notice"><strong>Format.</strong> <span id="population-format"></span></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-sliders"></i> options</h2>
+          <div class="doc-table-wrap"><table class="doc-table" id="population-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> entity setup and usage</div><pre id="population-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="population-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- FIELD POLICY -->
+      <div class="page" id="page-fieldpolicy">
+        <div class="doc-section">
+          <h1 class="page-title">field policy</h1>
+          <p class="lead" id="fieldpolicy-intro"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-eye-slash"></i> read guard</h2>
+          <p id="fieldpolicy-read"></p>
+          <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-pen-to-square"></i> write guard</h2>
+          <p id="fieldpolicy-write"></p>
+          <p id="fieldpolicy-strict" style="margin-top:var(--sp-xxs)"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> fieldPolicy definition</div><pre id="fieldpolicy-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <p id="fieldpolicy-servicefor-note"></p>
+          <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="fieldpolicy-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- SCOPED SERVICE -->
+      <div class="page" id="page-scopedservice">
+        <div class="doc-section">
+          <h1 class="page-title">serviceFor()</h1>
+          <p class="lead" id="scopedservice-intro"></p>
+          <div class="notice"><code id="scopedservice-signature"></code></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-sliders"></i> scopedService options</h2>
+          <div class="doc-table-wrap"><table class="doc-table" id="scopedservice-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> request-scoped usage</div><pre id="scopedservice-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="scopedservice-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div class="page" id="page-auditlog">
+        <div class="doc-section">
+          <h1 class="page-title">audit log</h1>
+          <p class="lead" id="auditlog-intro"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-sliders"></i> options</h2>
+          <div class="doc-table-wrap"><table class="doc-table" id="auditlog-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-file-lines"></i> audit record shape</h2>
+          <div class="notice"><code id="auditlog-record"></code></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> setup and history query</div><pre id="auditlog-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="auditlog-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- VIRTUALS -->
+      <div class="page" id="page-virtuals">
+        <div class="doc-section">
+          <h1 class="page-title">virtual fields</h1>
+          <p class="lead" id="virtuals-intro"></p>
+          <div class="notice"><strong>Format.</strong> <span id="virtuals-format"></span></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> computed fields on read</div><pre id="virtuals-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="virtuals-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- MIGRATIONS -->
+      <div class="page" id="page-migrations">
+        <div class="doc-section">
+          <h1 class="page-title">schema migrations</h1>
+          <p class="lead" id="migrations-intro"></p>
+          <div class="notice"><strong>Format.</strong> <span id="migrations-format"></span></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-tag"></i> __schemaVersion</h2>
+          <p id="migrations-version"></p>
+          <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-rotate"></i> execution</h2>
+          <p id="migrations-execution"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> multi-version migration</div><pre id="migrations-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="migrations-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- WEBHOOKS -->
+      <div class="page" id="page-webhooks">
+        <div class="doc-section">
+          <h1 class="page-title">webhooks</h1>
+          <p class="lead" id="webhooks-intro"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-sliders"></i> config options</h2>
+          <div class="doc-table-wrap"><table class="doc-table" id="webhooks-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-file-code"></i> payload shape</h2>
+          <div class="notice"><code id="webhooks-payload"></code></div>
+          <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-lock"></i> signature</h2>
+          <p id="webhooks-signature"></p>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> setup and receiver verification</div><pre id="webhooks-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="webhooks-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+        </div>
+      </div>
+
+      <!-- SERIALISER -->
+      <div class="page" id="page-serialiser">
+        <div class="doc-section">
+          <h1 class="page-title">serialiser</h1>
+          <p class="lead" id="serialiser-intro"></p>
+          <div class="notice"><strong>Signature.</strong> <code id="serialiser-signature"></code></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-code"></i> examples</h2>
+          <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> transform and reshape response</div><pre id="serialiser-example"><code></code></pre></div>
+          <div class="section-divider"></div>
+          <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> scope</h2>
+          <p id="serialiser-scope"></p>
+          <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-circle-info"></i> notes</h2>
+          <ul id="serialiser-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
         </div>
       </div>
 
@@ -2027,6 +2275,22 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
         ul.appendChild(li);
       });
 
+      // field resolution table
+      if (ic.fieldResolution) {
+        const frDiv = document.getElementById('interceptors-field-resolution');
+        const tbl = document.createElement('table');
+        tbl.className = 'doc-table';
+        tbl.innerHTML = '<thead><tr><th>route</th><th>field source</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+        ic.fieldResolution.routes.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.route}</td><td>${r.source}</td>`;
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        frDiv.appendChild(tbl);
+      }
+
       const exDiv = document.getElementById('interceptors-examples');
       ic.examples.forEach(ex => {
         const block = document.createElement('div');
@@ -2130,6 +2394,15 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
       document.getElementById('sidebar').classList.toggle('open');
     };
 
+    // download dropdown
+    function toggleDropdown(e) {
+      e.stopPropagation();
+      document.querySelector('.download-dropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', () => {
+      document.querySelector('.download-dropdown')?.classList.remove('open');
+    });
+
     // ── appendData page ────────────────────────────────────────────────────────────
     function buildAppendData(ref) {
       const ad = ref.appendData;
@@ -2211,6 +2484,162 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
       document.querySelector('#analysis-http-post code').textContent = an.http.postExample;
     }
 
+    // ── buildFeaturePage helper ──────────────────────────────────────────────────
+    function buildFeaturePage(key, ref, mapping) {
+      const data = ref[key];
+      if (!data) return;
+      for (const [elId, dataKey] of Object.entries(mapping)) {
+        const el = document.getElementById(elId);
+        if (!el) continue;
+        const val = data[dataKey];
+        if (val === undefined || val === null) continue;
+        if (Array.isArray(val)) {
+          if (el.tagName === 'UL') {
+            val.forEach(n => { const li = document.createElement('li'); li.textContent = n; el.appendChild(li); });
+          } else if (el.tagName === 'TBODY') {
+            val.forEach(row => {
+              const tr = document.createElement('tr');
+              const keys = Object.keys(row);
+              keys.forEach(k => { const td = document.createElement('td'); td.textContent = row[k]; tr.appendChild(td); });
+              el.appendChild(tr);
+            });
+          }
+        } else if (el.tagName === 'PRE' || (el.tagName === 'CODE' && el.parentElement?.tagName === 'PRE')) {
+          const codeEl = el.tagName === 'PRE' ? el.querySelector('code') : el;
+          if (codeEl) codeEl.textContent = val;
+        } else {
+          el.textContent = val;
+        }
+      }
+    }
+
+    // ── population page ──────────────────────────────────────────────────────────
+    function buildPopulation(ref) {
+      buildFeaturePage('population', ref, {
+        'population-intro': 'intro',
+        'population-format': 'format',
+        'population-notes': 'notes',
+      });
+      const opts = ref.population?.options || [];
+      const tbody = document.querySelector('#population-options-table tbody');
+      opts.forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+        tbody.appendChild(tr);
+      });
+      const exEl = document.querySelector('#population-example code');
+      if (exEl) exEl.textContent = ref.population?.example || '';
+    }
+
+    // ── field policy page ────────────────────────────────────────────────────────
+    function buildFieldPolicy(ref) {
+      const fp = ref.fieldpolicy;
+      if (!fp) return;
+      document.getElementById('fieldpolicy-intro').textContent = fp.intro;
+      document.getElementById('fieldpolicy-read').textContent = fp.readGuard;
+      document.getElementById('fieldpolicy-write').textContent = fp.writeGuard;
+      document.getElementById('fieldpolicy-strict').textContent = fp.strict;
+      document.getElementById('fieldpolicy-servicefor-note').textContent = fp.serviceFor;
+      const exEl = document.querySelector('#fieldpolicy-example code');
+      if (exEl) exEl.textContent = fp.example;
+      const ul = document.getElementById('fieldpolicy-notes');
+      (fp.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── scoped service page ──────────────────────────────────────────────────────
+    function buildScopedService(ref) {
+      const ss = ref.scopedservice;
+      if (!ss) return;
+      document.getElementById('scopedservice-intro').textContent = ss.intro;
+      document.getElementById('scopedservice-signature').textContent = ss.signature;
+      const tbody = document.querySelector('#scopedservice-options-table tbody');
+      (ss.options || []).forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+        tbody.appendChild(tr);
+      });
+      const exEl = document.querySelector('#scopedservice-example code');
+      if (exEl) exEl.textContent = ss.example;
+      const ul = document.getElementById('scopedservice-notes');
+      (ss.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── audit log page ───────────────────────────────────────────────────────────
+    function buildAuditLog(ref) {
+      const al = ref.auditlog;
+      if (!al) return;
+      document.getElementById('auditlog-intro').textContent = al.intro;
+      document.getElementById('auditlog-record').textContent = al.auditRecord;
+      const tbody = document.querySelector('#auditlog-options-table tbody');
+      (al.options || []).forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+        tbody.appendChild(tr);
+      });
+      const exEl = document.querySelector('#auditlog-example code');
+      if (exEl) exEl.textContent = al.example;
+      const ul = document.getElementById('auditlog-notes');
+      (al.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── virtuals page ────────────────────────────────────────────────────────────
+    function buildVirtuals(ref) {
+      const v = ref.virtuals;
+      if (!v) return;
+      document.getElementById('virtuals-intro').textContent = v.intro;
+      document.getElementById('virtuals-format').textContent = v.format;
+      const exEl = document.querySelector('#virtuals-example code');
+      if (exEl) exEl.textContent = v.example;
+      const ul = document.getElementById('virtuals-notes');
+      (v.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── migrations page ──────────────────────────────────────────────────────────
+    function buildMigrations(ref) {
+      const m = ref.migrations;
+      if (!m) return;
+      document.getElementById('migrations-intro').textContent = m.intro;
+      document.getElementById('migrations-format').textContent = m.format;
+      document.getElementById('migrations-version').textContent = m.schemaVersion;
+      document.getElementById('migrations-execution').textContent = m.execution;
+      const exEl = document.querySelector('#migrations-example code');
+      if (exEl) exEl.textContent = m.example;
+      const ul = document.getElementById('migrations-notes');
+      (m.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── webhooks page ────────────────────────────────────────────────────────────
+    function buildWebhooks(ref) {
+      const w = ref.webhooks;
+      if (!w) return;
+      document.getElementById('webhooks-intro').textContent = w.intro;
+      document.getElementById('webhooks-payload').textContent = w.payload;
+      document.getElementById('webhooks-signature').textContent = w.signature;
+      const tbody = document.querySelector('#webhooks-options-table tbody');
+      (w.options || []).forEach(o => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+        tbody.appendChild(tr);
+      });
+      const exEl = document.querySelector('#webhooks-example code');
+      if (exEl) exEl.textContent = w.example;
+      const ul = document.getElementById('webhooks-notes');
+      (w.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
+    // ── serialiser page ──────────────────────────────────────────────────────────
+    function buildSerialiser(ref) {
+      const s = ref.serialiser;
+      if (!s) return;
+      document.getElementById('serialiser-intro').textContent = s.intro;
+      document.getElementById('serialiser-signature').textContent = s.signature;
+      document.getElementById('serialiser-scope').textContent = s.scope;
+      const exEl = document.querySelector('#serialiser-example code');
+      if (exEl) exEl.textContent = s.example;
+      const ul = document.getElementById('serialiser-notes');
+      (s.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+    }
+
     // ── init ──────────────────────────────────────────────────────────────────────
     async function init() {
       const [coreRes, epRes, refRes] = await Promise.all([
@@ -2236,6 +2665,14 @@ booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</sp
       buildAppendData(REFERENCE);
       buildAppendPop(REFERENCE);
       buildAnalysis(REFERENCE);
+      buildPopulation(REFERENCE);
+      buildFieldPolicy(REFERENCE);
+      buildScopedService(REFERENCE);
+      buildAuditLog(REFERENCE);
+      buildVirtuals(REFERENCE);
+      buildMigrations(REFERENCE);
+      buildWebhooks(REFERENCE);
+      buildSerialiser(REFERENCE);
 
       renderRoute(getRoute());
     }

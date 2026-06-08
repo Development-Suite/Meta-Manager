@@ -4,6 +4,12 @@ export { MetaEventEmitter } from "./core/EventEmitter";
 export { MetaValidator } from "./core/MetaValidator";
 export { NestedOpsService } from "./core/NestedOpsService";
 export { MetaAnalysisService } from "./core/MetaAnalysisService";
+export { AuditLogService } from "./core/AuditLogService";
+export { WebhookService } from "./core/WebhookService";
+export { FieldPolicyService } from "./core/FieldPolicyService";
+export { ScopedMetaService } from "./core/ScopedMetaService";
+export { MigrationService } from "./core/MigrationService";
+export { applyPopulationToOne, applyPopulationToMany, resolvePopulateDirectives } from "./core/PopulationMiddleware";
 export { buildSchema } from "./core/SchemaBuilder";
 
 export type {
@@ -43,3 +49,18 @@ export type {
   FieldChangeResult, FunnelResult, PercentileResult,
 } from "./types/analysis";
 export { resolveIntendedFields } from "./types";
+export type {
+  PopulateConfig,
+  FieldPolicyMap,
+  FieldPolicy,
+  FieldPolicyGuard,
+  AuditLogOptions,
+  AuditRecord,
+  VirtualMap,
+  VirtualDefinition,
+  ScopedServiceOptions,
+  MigrationDefinition,
+  WebhookConfig,
+  SerialiserOptions,
+  SerialiserFn,
+} from "./types/features";

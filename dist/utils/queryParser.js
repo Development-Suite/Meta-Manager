@@ -96,6 +96,12 @@ function parseQueryOptions(query) {
     }
     // Arbitrary filter: filter[status]=active&filter[owned_by]=uuid
     const filter = {};
+    // Express's qs parser already nests ?filter[status]=active
+    // into query.filter = { status: 'active' }
+    if (query.filter && typeof query.filter === "object" && !Array.isArray(query.filter)) {
+        Object.assign(filter, query.filter);
+    }
+    // Fallback for raw bracket-notation keys (non-extended parser)
     for (const key of Object.keys(query)) {
         const match = key.match(/^filter\[(.+)\]$/);
         if (match) {

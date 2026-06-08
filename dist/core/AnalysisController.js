@@ -50,6 +50,9 @@ class AnalysisController {
         const to = get("to");
         // Filter: filter[status]=active in query OR filter: {} in body
         const filterFromQuery = {};
+        if (q.filter && typeof q.filter === "object" && !Array.isArray(q.filter)) {
+            Object.assign(filterFromQuery, q.filter);
+        }
         for (const key of Object.keys(q)) {
             const m = key.match(/^filter\[(.+)\]$/);
             if (m)

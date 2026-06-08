@@ -1,5 +1,6 @@
 import { Schema } from "mongoose";
 import { SchemaFields, MetaEntityOptions } from "../types";
+import { VirtualMap, VirtualDefinition } from "../types/features";
 
 const BASE_FIELDS: SchemaFields = {
   uuid: {
@@ -113,6 +114,26 @@ export function buildSchema(options: MetaEntityOptions): Schema {
       textIndex[f] = "text";
     }
     schema.index(textIndex);
+  }
+
+  // Schema version field for migration tracking
+  if (options.migrations && options.migrations.length > 0) {
+    (fields as any).__schemaVersion = { type: Number, default: 0 };
+  }
+
+  // Register virtual fields
+  if (options.virtuals) {
+    for (const [name, def] of Object.entries(options.virtuals)) {
+      const virtDef = typeof def === "function"
+        ? { get: def as () => unknown }
+        : def as VirtualDefinition;
+      const v = schema.virtual(name);
+      v.get(virtDef.get);
+      if (virtDef.set) v.set(virtDef.set);
+    }
+    // Ensure virtuals appear in toObject() and toJSON() output
+    schema.set("toObject", { virtuals: true });
+    schema.set("toJSON",   { virtuals: true });
   }
 
   return schema;

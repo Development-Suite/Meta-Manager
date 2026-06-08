@@ -5,6 +5,7 @@ import { NestedOpPayload, NestedOpResult } from "../types/nestedOps";
 import { AnalysisOptions, AnalysisResult } from "../types/analysis";
 import { NestedOpsService } from "./NestedOpsService";
 import { MetaAnalysisService } from "./MetaAnalysisService";
+import { AuditLogService } from "./AuditLogService";
 export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocument> implements IMetaEntity<T> {
     readonly entityName: string;
     readonly model: Model<T>;
@@ -15,6 +16,8 @@ export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocumen
     private readonly options;
     readonly nestedOps: NestedOpsService<T>;
     readonly analysis: MetaAnalysisService<T>;
+    readonly auditLog: AuditLogService | null;
+    private readonly fieldPolicySvc;
     constructor(name: string, options?: MetaEntityOptions);
     private assertMongooseConnection;
     /**
@@ -42,6 +45,24 @@ export declare class MetaEntity<T extends BaseEntityDocument = BaseEntityDocumen
      * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
      * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
      */
+    /**
+     * Returns a service pre-scoped to the caller identified by the request.
+     * Automatically fills created_by, updated_by, added_by.
+     * Enforces field-level read and write policies.
+     */
+    serviceFor(req: import("../types").CustomRequest): import("../types").IMetaService<T>;
+    /**
+     * Fetch audit history for a specific document.
+     * Only available when auditLog is enabled.
+     */
+    getHistory(entityId: string, options?: {
+        limit?: number;
+        page?: number;
+        event?: string;
+    }): Promise<{
+        data: import("../types/features").AuditRecord[];
+        total: number;
+    }>;
     analyze(options: AnalysisOptions): Promise<AnalysisResult>;
     nested(id: string, payload: NestedOpPayload): Promise<NestedOpResult<T>>;
     /**

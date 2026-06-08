@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Document, Model } from "mongoose";
 import Joi from "joi";
+import { PopulateConfig, FieldPolicyMap, AuditLogOptions, VirtualMap, ScopedServiceOptions, MigrationDefinition, WebhookConfig, SerialiserOptions } from "./features";
 export interface CustomRequest extends Request {
     id?: string;
 }
@@ -215,6 +216,45 @@ export interface MetaEntityOptions {
     children?: ChildEntityConfig[];
     collectionName?: string;
     strictPopulate?: boolean;
+    /**
+     * Schema-level auto-population. Runs on every fetch without query params.
+     * Mark entries optional:true to require explicit ?populate=alias opt-in.
+     */
+    populate?: PopulateConfig[];
+    /**
+     * Field-level read/write access control.
+     * Read guards strip the field from responses.
+     * Write guards block or silently drop the field from mutations.
+     */
+    fieldPolicy?: FieldPolicyMap;
+    /**
+     * Built-in audit logging. Writes change records to {entityName}_history.
+     */
+    auditLog?: AuditLogOptions | true;
+    /**
+     * Mongoose virtual field definitions.
+     * Virtuals are computed on read and never stored.
+     */
+    virtuals?: VirtualMap;
+    /**
+     * Request-scoped service options.
+     * Controls how serviceFor(req) extracts the caller identity.
+     */
+    scopedService?: ScopedServiceOptions;
+    /**
+     * Schema migration definitions. Applied lazily on document read
+     * when the document's __schemaVersion is below the latest.
+     */
+    migrations?: MigrationDefinition[];
+    /**
+     * Outbound webhook deliveries triggered by entity events.
+     */
+    webhooks?: WebhookConfig[];
+    /**
+     * Response serialiser. Transforms documents before they leave the controller.
+     * Runs after field policy stripping.
+     */
+    serialiser?: SerialiserOptions;
 }
 export interface BaseEntityDocument extends Document {
     uuid: string;
@@ -257,6 +297,7 @@ export interface IMetaService<T extends BaseEntityDocument = BaseEntityDocument>
     withChildren(id: string, options?: QueryOptions): Promise<T | null>;
     validate(data: unknown, mode: "create" | "update"): ValidationResult;
 }
+export type { PopulateConfig, FieldPolicyMap, FieldPolicy, FieldPolicyGuard, AuditLogOptions, AuditRecord, VirtualMap, VirtualDefinition, ScopedServiceOptions, MigrationDefinition, WebhookConfig, SerialiserOptions, SerialiserFn, } from "./features";
 export interface IMetaEntity<T extends BaseEntityDocument = BaseEntityDocument> {
     readonly entityName: string;
     readonly model: Model<T>;
@@ -274,6 +315,11 @@ export interface IMetaEntity<T extends BaseEntityDocument = BaseEntityDocument> 
      */
     trigger<E extends EventPath<T>>(events: E[], callback: CallbackForEvent<T, E>): void;
     intercept(action: InterceptorAction | InterceptorAction[], callback: InterceptorCallback): void;
+    /**
+     * Returns a service instance pre-scoped to the caller identified by the request.
+     * Automatically fills created_by, updated_by, added_by from req.user.
+     * Enforces field-level write policies using the request context.
+     */
+    serviceFor(req: CustomRequest): IMetaService<T>;
 }
-export {};
 //# sourceMappingURL=index.d.ts.map

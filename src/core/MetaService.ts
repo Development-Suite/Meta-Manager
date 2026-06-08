@@ -13,6 +13,8 @@ import {
 } from "../types";
 import { appendToOne, appendToMany } from "./AppendService";
 import { extractAppendDirectives } from "../utils/queryParser";
+import { applyPopulationToOne, applyPopulationToMany } from "./PopulationMiddleware";
+import { MigrationService } from "./MigrationService";
 import { MetaEventEmitter } from "./EventEmitter";
 import { MetaValidator } from "./MetaValidator";
 import {
@@ -26,6 +28,7 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
   implements IMetaService<T>
 {
   private readonly validator: MetaValidator;
+  private readonly migrationSvc: MigrationService;
 
   constructor(
     private readonly model: Model<T>,
@@ -33,7 +36,8 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     private readonly events: MetaEventEmitter,
     private readonly entityName: string
   ) {
-    this.validator = new MetaValidator(options);
+    this.validator    = new MetaValidator(options);
+    this.migrationSvc = new MigrationService(options.migrations || []);
   }
 
   private buildBaseFilter(extra?: Record<string, unknown>): FilterQuery<T> {
@@ -141,9 +145,19 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     ]);
 
     const directives = extractAppendDirectives(opts);
-    const data = directives.length
+    let data: T[] = directives.length
       ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
       : rawData;
+
+    // Schema-level population (auto-populate declared in entity options)
+    if (this.options.populate?.length) {
+      data = (await applyPopulationToMany(data as unknown as Record<string, unknown>[], this.options.populate, opts)) as unknown as T[];
+    }
+
+    // Lazy migrations
+    if (this.migrationSvc.hasMigrations()) {
+      data = (await this.migrationSvc.migrateMany(data as unknown as Record<string, unknown>[])) as unknown as T[];
+    }
 
     return this.paginatedResult(data, total, page, limit);
   }
@@ -157,18 +171,27 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
 
     const directives = extractAppendDirectives(opts);
 
+    let plain: Record<string, unknown> = this.toPlain(doc);
+
     if (opts.includeChildren) {
-      let plain = await this.populateChildren(doc, opts);
-      if (directives.length) plain = await appendToOne(plain, directives);
-      return plain as unknown as T;
+      plain = await this.populateChildren(doc, opts);
     }
 
     if (directives.length) {
-      const plain = await appendToOne(this.toPlain(doc), directives);
-      return plain as unknown as T;
+      plain = await appendToOne(plain, directives);
     }
 
-    return doc;
+    // Schema-level population
+    if (this.options.populate?.length) {
+      plain = await applyPopulationToOne(plain, this.options.populate, opts);
+    }
+
+    // Lazy migration
+    if (this.migrationSvc.hasMigrations()) {
+      plain = await this.migrationSvc.migrateOne(plain);
+    }
+
+    return plain as unknown as T;
   }
 
   async findOne(filter: Record<string, unknown>, opts: QueryOptions = {}): Promise<T | null> {
@@ -189,9 +212,17 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     ]);
 
     const directives = extractAppendDirectives(opts);
-    const data = directives.length
+    let data: T[] = directives.length
       ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
       : rawData;
+
+    if (this.options.populate?.length) {
+      data = (await applyPopulationToMany(data as unknown as Record<string, unknown>[], this.options.populate, opts)) as unknown as T[];
+    }
+
+    if (this.migrationSvc.hasMigrations()) {
+      data = (await this.migrationSvc.migrateMany(data as unknown as Record<string, unknown>[])) as unknown as T[];
+    }
 
     return this.paginatedResult(data, total, page, limit);
   }
@@ -219,9 +250,17 @@ export class MetaService<T extends BaseEntityDocument = BaseEntityDocument>
     ]);
 
     const directives = extractAppendDirectives(opts);
-    const data = directives.length
+    let data: T[] = directives.length
       ? (await appendToMany(rawData as Record<string, unknown>[], directives)) as T[]
       : rawData;
+
+    if (this.options.populate?.length) {
+      data = (await applyPopulationToMany(data as unknown as Record<string, unknown>[], this.options.populate, opts)) as unknown as T[];
+    }
+
+    if (this.migrationSvc.hasMigrations()) {
+      data = (await this.migrationSvc.migrateMany(data as unknown as Record<string, unknown>[])) as unknown as T[];
+    }
 
     return this.paginatedResult(data, total, page, limit);
   }

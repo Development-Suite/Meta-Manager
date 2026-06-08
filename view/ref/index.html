@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>meta-manager docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* ── tokens ──────────────────────────────────────────────── */
+:root {
+  --canvas:          #181818;
+  --canvas-elevated: #232323;
+  --canvas-deep:     #111111;
+  --primary:         #da291c;
+  --primary-active:  #b01e0a;
+  --hairline:        #2e2e2e;
+  --hairline-soft:   #252525;
+  --ink:             #ffffff;
+  --body:            #969696;
+  --body-strong:     #c8c8c8;
+  --muted:           #555555;
+  --on-primary:      #ffffff;
+  --code-bg:         #0e0e0e;
+  --code-border:     #2a2a2a;
+
+  --sp-xxxs: 4px;
+  --sp-xxs:  8px;
+  --sp-xs:   16px;
+  --sp-sm:   24px;
+  --sp-md:   32px;
+  --sp-lg:   48px;
+  --sp-xl:   64px;
+  --sp-xxl:  96px;
+
+  --nav-w: 256px;
+  --content-max: 860px;
+
+  --font-display: 'Inter', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+}
+
+/* ── reset ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; scroll-behavior: smooth; }
+body {
+  background: var(--canvas);
+  color: var(--body);
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--canvas); }
+::-webkit-scrollbar-thumb { background: var(--hairline); }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── top bar ─────────────────────────────────────────────── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: var(--canvas-deep);
+  border-bottom: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  padding: 0 var(--sp-md);
+  z-index: 100;
+}
+#topbar .wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+#topbar .wordmark .dot {
+  width: 10px; height: 10px;
+  background: var(--primary);
+  border-radius: 0;
+  flex-shrink: 0;
+}
+#topbar .wordmark span {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+#topbar .wordmark .version {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-left: var(--sp-xxs);
+}
+#topbar .divider {
+  width: 1px;
+  height: 20px;
+  background: var(--hairline);
+}
+#topbar .install-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  padding: 6px var(--sp-xs);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--body-strong);
+  cursor: pointer;
+  flex: 1;
+  max-width: 420px;
+  position: relative;
+  overflow: hidden;
+}
+#topbar .install-bar::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--primary);
+}
+#topbar .install-bar .prompt { color: var(--primary); margin-right: 2px; }
+#topbar .install-bar .copy-btn {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s;
+  background: none; border: none;
+  font-family: var(--font-mono);
+  padding: 0;
+}
+#topbar .install-bar .copy-btn:hover { color: var(--ink); }
+#topbar .gh-link {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 16px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+#topbar .gh-link:hover { color: var(--ink); }
+
+/* ── layout ──────────────────────────────────────────────── */
+#layout {
+  display: flex;
+  margin-top: 56px;
+  min-height: calc(100vh - 56px);
+}
+
+/* ── sidebar ─────────────────────────────────────────────── */
+#sidebar {
+  width: var(--nav-w);
+  background: var(--canvas-deep);
+  border-right: 1px solid var(--hairline);
+  position: fixed;
+  top: 56px; left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  padding: var(--sp-md) 0 var(--sp-xl);
+  flex-shrink: 0;
+}
+.nav-section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  padding: var(--sp-md) var(--sp-md) var(--sp-xxs);
+  text-transform: none;
+}
+.nav-section-label:not(:first-child) {
+  border-top: 1px solid var(--hairline-soft);
+  margin-top: var(--sp-sm);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: 9px var(--sp-md);
+  color: var(--body);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  position: relative;
+  user-select: none;
+}
+.nav-item i {
+  width: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  transition: color 0.12s;
+  flex-shrink: 0;
+}
+.nav-item:hover {
+  color: var(--body-strong);
+  background: rgba(255,255,255,0.02);
+}
+.nav-item:hover i { color: var(--body); }
+.nav-item.active {
+  color: var(--ink);
+  background: rgba(218, 41, 28, 0.06);
+}
+.nav-item.active i { color: var(--primary); }
+
+/* sub items */
+.nav-sub-item {
+  display: block;
+  padding: 6px var(--sp-md) 6px 46px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav-sub-item:hover { color: var(--body); }
+.nav-sub-item.active { color: var(--primary); }
+
+/* method badge */
+.method-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.method-GET    { background: rgba(3,144,74,0.15);  color: #03904a; }
+.method-POST   { background: rgba(76,152,185,0.15); color: #4c98b9; }
+.method-PUT    { background: rgba(246,229,0,0.12);  color: #c8b800; }
+.method-PATCH  { background: rgba(246,229,0,0.12);  color: #c8b800; }
+.method-DELETE { background: rgba(218,41,28,0.15);  color: #da291c; }
+
+/* ── main content ────────────────────────────────────────── */
+#content {
+  margin-left: var(--nav-w);
+  flex: 1;
+  min-width: 0;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── sections ────────────────────────────────────────────── */
+.doc-section {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-xxl) var(--sp-xl);
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.doc-section:last-child { border-bottom: none; }
+
+/* ── headings ────────────────────────────────────────────── */
+#hero-title{
+  white-space: normal;
+  word-break: break-word;
+}
+h1.page-title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: var(--sp-sm);
+}
+h2.section-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--sp-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+h2.section-title i {
+  font-size: 14px;
+  color: var(--primary);
+}
+h3.sub-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--body-strong);
+  margin-bottom: var(--sp-xxs);
+}
+
+/* lead text */
+.lead {
+  font-size: 16px;
+  color: var(--body-strong);
+  line-height: 1.65;
+  margin-bottom: var(--sp-md);
+  max-width: 680px;
+}
+p {
+  color: var(--body);
+  line-height: 1.7;
+  margin-bottom: var(--sp-xs);
+  font-size: 14px;
+}
+
+/* ── hero band ───────────────────────────────────────────── */
+#hero-band {
+  background: var(--canvas-deep);
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--sp-xxl) var(--sp-xl);
+  max-width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+#hero-band::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary) 0%, transparent 60%);
+}
+#hero-band .tagline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--primary);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--sp-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+}
+#hero-band .tagline::before {
+  content: '';
+  display: inline-block;
+  width: 18px; height: 1px;
+  background: var(--primary);
+}
+#hero-band h1 {
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  margin-bottom: var(--sp-sm);
+  max-width: 680px;
+}
+#hero-band .hero-desc {
+  font-size: 16px;
+  color: var(--body);
+  max-width: 540px;
+  line-height: 1.65;
+  margin-bottom: var(--sp-lg);
+}
+.hero-actions { display: flex; gap: var(--sp-xs); flex-wrap: wrap; }
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 13px var(--sp-md);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+  transition: background 0.15s;
+  border-radius: 0;
+}
+.btn-primary:hover { background: var(--primary-active); }
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  padding: 13px var(--sp-md);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--hairline);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+  transition: border-color 0.15s, color 0.15s;
+  border-radius: 0;
+}
+.btn-outline:hover { border-color: var(--body); }
+
+/* ── code blocks ─────────────────────────────────────────── */
+pre, code {
+  font-family: var(--font-mono);
+}
+code {
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  padding: 1px 6px;
+  font-size: 12px;
+  color: var(--body-strong);
+  border-radius: 0;
+}
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-left: 3px solid var(--primary);
+  padding: var(--sp-md);
+  overflow-x: auto;
+  font-size: 13px;
+  color: #c8c8c8;
+  line-height: 1.6;
+  margin: var(--sp-xs) 0;
+  position: relative;
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.pre-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--code-border);
+  border-bottom: none;
+  padding: 8px var(--sp-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.pre-header .lang { color: var(--primary); }
+.copy-code-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 0;
+  transition: color 0.12s;
+}
+.copy-code-btn:hover { color: var(--ink); }
+
+/* ── tables ──────────────────────────────────────────────── */
+.doc-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: var(--sp-sm) 0;
+}
+.doc-table th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-align: left;
+  padding: var(--sp-xxs) var(--sp-xs);
+  border-bottom: 1px solid var(--hairline);
+  font-weight: 400;
+}
+.doc-table td {
+  padding: 10px var(--sp-xs);
+  border-bottom: 1px solid var(--hairline-soft);
+  color: var(--body);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.doc-table td:first-child {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--body-strong);
+  white-space: nowrap;
+}
+.doc-table tr:last-child td { border-bottom: none; }
+.doc-table .required-pill {
+  background: rgba(218,41,28,0.15);
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ── endpoint block ──────────────────────────────────────── */
+.endpoint-block {
+  border: 1px solid var(--hairline);
+  margin: var(--sp-lg) 0;
+  position: relative;
+}
+.endpoint-block::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 3px;
+  background: var(--hairline);
+}
+.endpoint-block.method-get-accent::before   { background: #03904a; }
+.endpoint-block.method-post-accent::before  { background: #4c98b9; }
+.endpoint-block.method-patch-accent::before { background: #c8b800; }
+.endpoint-block.method-put-accent::before   { background: #c8b800; }
+.endpoint-block.method-delete-accent::before{ background: var(--primary); }
+
+.endpoint-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) var(--sp-md);
+  background: var(--canvas-elevated);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--hairline);
+}
+.endpoint-header:hover { background: #2a2a2a; }
+.endpoint-path {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+  flex: 1;
+}
+.endpoint-path .prefix { color: var(--muted); }
+.endpoint-summary {
+  font-size: 12px;
+  color: var(--body);
+  margin-left: auto;
+  max-width: 320px;
+  text-align: right;
+}
+.endpoint-chevron {
+  color: var(--muted);
+  font-size: 11px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.endpoint-block.open .endpoint-chevron { transform: rotate(90deg); }
+.endpoint-body {
+  display: none;
+  padding: var(--sp-md);
+  background: var(--canvas);
+}
+.endpoint-block.open .endpoint-body { display: block; }
+.endpoint-body p { margin-bottom: var(--sp-sm); }
+.param-section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--primary);
+  letter-spacing: 0.1em;
+  margin: var(--sp-md) 0 var(--sp-xxs);
+}
+.response-row {
+  display: flex;
+  gap: var(--sp-xs);
+  align-items: flex-start;
+  margin: var(--sp-xxs) 0;
+}
+.response-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 0;
+  flex-shrink: 0;
+}
+.response-code.c200, .response-code.c201 { background: rgba(3,144,74,0.15);  color: #03904a; }
+.response-code.c400, .response-code.c409 { background: rgba(218,41,28,0.15); color: #da291c; }
+.response-code.c404                       { background: rgba(246,229,0,0.1);  color: #c8b800; }
+.response-example {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* ── event/interceptor blocks ────────────────────────────── */
+.event-row {
+  padding: var(--sp-sm) 0;
+  border-bottom: 1px solid var(--hairline-soft);
+}
+.event-row:last-child { border-bottom: none; }
+.event-pattern {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  margin-bottom: var(--sp-xxs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+}
+.event-pattern .event-type-label {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  background: rgba(218,41,28,0.1);
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.event-row p {
+  font-size: 13px;
+  margin-bottom: var(--sp-xxs);
+}
+.event-meta {
+  display: flex;
+  gap: var(--sp-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: var(--sp-xxs);
+}
+.event-meta span { color: var(--body); }
+
+/* ── nested ops table ────────────────────────────────────── */
+.op-row {
+  display: grid;
+  grid-template-columns: 120px 100px 1fr;
+  gap: var(--sp-xs);
+  padding: var(--sp-xs) 0;
+  border-bottom: 1px solid var(--hairline-soft);
+  align-items: start;
+}
+.op-row:last-child { border-bottom: none; }
+.op-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+.op-operator {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--primary);
+}
+.op-desc { font-size: 13px; color: var(--body); }
+
+/* ── concept strip ───────────────────────────────────────── */
+.concept-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  background: var(--hairline);
+  border: 1px solid var(--hairline);
+  margin: var(--sp-md) 0;
+}
+.concept-item {
+  background: var(--canvas);
+  padding: var(--sp-md);
+  cursor: pointer;
+  transition: background 0.12s;
+  text-decoration: none;
+}
+.concept-item:hover { background: var(--canvas-elevated); }
+.concept-item .ci-title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--sp-xxs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+}
+.concept-item .ci-title::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--primary);
+  flex-shrink: 0;
+}
+.concept-item .ci-text {
+  font-size: 12px;
+  color: var(--body);
+  line-height: 1.5;
+}
+
+/* ── example blocks ──────────────────────────────────────── */
+.example-block {
+  margin: var(--sp-md) 0;
+  border: 1px solid var(--hairline);
+}
+.example-block .example-label {
+  background: var(--canvas-elevated);
+  border-bottom: 1px solid var(--hairline);
+  padding: 7px var(--sp-md);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xxs);
+}
+.example-block .example-label i { color: var(--primary); font-size: 10px; }
+.example-block pre {
+  margin: 0;
+  border: none;
+  border-left: none;
+  border-radius: 0;
+}
+
+/* ── nullability table ───────────────────────────────────── */
+.null-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-xs);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hairline-soft);
+  font-size: 13px;
+}
+.null-row:last-child { border-bottom: none; }
+.null-pattern {
+  font-family: var(--font-mono);
+  color: var(--body-strong);
+  width: 280px;
+  flex-shrink: 0;
+}
+.null-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 0;
+}
+.null-tag.nullable    { background: rgba(218,41,28,0.1); color: var(--primary); }
+.null-tag.nonnull     { background: rgba(3,144,74,0.12); color: #03904a; }
+
+/* ── inline notice ───────────────────────────────────────── */
+.notice {
+  border-left: 3px solid var(--primary);
+  padding: var(--sp-xs) var(--sp-md);
+  background: rgba(218,41,28,0.05);
+  margin: var(--sp-md) 0;
+  font-size: 13px;
+  color: var(--body);
+  line-height: 1.6;
+}
+.notice strong { color: var(--body-strong); }
+
+/* ── divider ─────────────────────────────────────────────── */
+.section-divider {
+  height: 1px;
+  background: var(--hairline-soft);
+  margin: var(--sp-lg) 0;
+}
+
+/* ── responsive ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --nav-w: 0px; }
+  #sidebar { transform: translateX(-100%); transition: transform 0.2s; z-index: 90; width: 260px; }
+  #sidebar.open { transform: translateX(0); }
+  #topbar .hamburger { display: flex; }
+  .doc-section { padding: var(--sp-lg) var(--sp-md); }
+  .op-row { grid-template-columns: 1fr; }
+  .endpoint-summary { display: none; }
+}
+@media (min-width: 769px) {
+  .hamburger { display: none !important; }
+}
+.hamburger {
+  background: none; border: none;
+  color: var(--body); font-size: 16px;
+  cursor: pointer; padding: var(--sp-xxs);
+}
+
+/* ── scroll anchor offset ────────────────────────────────── */
+[id] { scroll-margin-top: 72px; }
+
+/* ── syntax highlight tints ──────────────────────────────── */
+.kw   { color: #da291c; }
+.str  { color: #9ecf8e; }
+.cmt  { color: #555555; font-style: italic; }
+.fn   { color: #7cb8f5; }
+.num  { color: #c8b800; }
+.prop { color: #c8c8c8; }
+</style>
+</head>
+<body>
+
+<!-- topbar -->
+<header id="topbar">
+  <button class="hamburger" id="menu-toggle" aria-label="menu">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+  <a class="wordmark" href="#" onclick="navigate('overview')">
+    <div class="dot"></div>
+    <span>meta-manager</span>
+    <span class="version" id="pkg-version">v1.0.0</span>
+  </a>
+  <div class="divider"></div>
+  <div class="install-bar" onclick="copyInstall()">
+    <span class="prompt">$</span>
+    <span id="install-cmd">npm install @ubyjerome/meta-manager mongoose express</span>
+    <button class="copy-btn" id="copy-btn" aria-label="copy"><i class="fa-regular fa-copy"></i></button>
+  </div>
+  <a class="gh-link" href="#" title="npm"><i class="fa-brands fa-npm"></i></a>
+</header>
+
+<!-- layout -->
+<div id="layout">
+
+  <!-- sidebar -->
+  <nav id="sidebar" aria-label="documentation navigation">
+    <div class="nav-section-label">navigation</div>
+    <div id="nav-items-root"></div>
+    <div class="nav-section-label">endpoints</div>
+    <div id="nav-items-endpoints"></div>
+  </nav>
+
+  <!-- content -->
+  <main id="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+      <div id="hero-band">
+        <div class="tagline">documentation</div>
+        <h1 id="hero-title">meta-manager</h1>
+        <p class="hero-desc" id="hero-desc"></p>
+        <div class="hero-actions">
+          <a class="btn-primary" onclick="navigate('quickstart')">
+            <i class="fa-solid fa-bolt"></i> quick start
+          </a>
+          <a class="btn-outline" onclick="navigate('endpoints')">
+            <i class="fa-solid fa-network-wired"></i> endpoints
+          </a>
+        </div>
+      </div>
+      <div class="doc-section">
+        <h2 class="section-title"><i class="fa-solid fa-cube"></i> core concepts</h2>
+        <p class="lead">The package is built around five interlocking concepts. Understanding all five makes the API predictable across every surface.</p>
+        <div class="concept-grid" id="concepts-grid"></div>
+      </div>
+      <div class="doc-section">
+        <h2 class="section-title"><i class="fa-solid fa-list"></i> base document shape</h2>
+        <p>Every entity document inherits these fields automatically. You never need to declare them in additionalFields.</p>
+        <table class="doc-table" id="base-fields-table">
+          <thead><tr><th>field</th><th>type</th><th>default</th><th>note</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- QUICKSTART -->
+    <div class="page" id="page-quickstart">
+      <div class="doc-section">
+        <h1 class="page-title">quick start</h1>
+        <p class="lead">Connect to MongoDB, create an entity, mount its controller. That is the complete setup.</p>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="kw">import</span> mongoose <span class="kw">from</span> <span class="str">"mongoose"</span>
+<span class="kw">import</span> express <span class="kw">from</span> <span class="str">"express"</span>
+<span class="kw">import</span> Joi <span class="kw">from</span> <span class="str">"joi"</span>
+<span class="kw">import</span> { MetaEntity } <span class="kw">from</span> <span class="str">"@ubyjerome/meta-manager"</span>
+
+<span class="cmt">// 1. connect first - MetaEntity checks this at construction</span>
+<span class="kw">await</span> mongoose.<span class="fn">connect</span>(<span class="str">"mongodb://localhost:27017/mydb"</span>)
+
+<span class="kw">const</span> app = express()
+app.<span class="fn">use</span>(express.<span class="fn">json</span>())
+
+<span class="cmt">// 2. define the entity</span>
+<span class="kw">const</span> booksEntity = <span class="kw">new</span> <span class="fn">MetaEntity</span>(<span class="str">"books"</span>, {
+  createSchema: {
+    title_name: Joi.<span class="fn">string</span>().<span class="fn">required</span>(),
+    isbn:       Joi.<span class="fn">string</span>().<span class="fn">optional</span>(),
+    libraryId:  Joi.<span class="fn">string</span>().<span class="fn">required</span>()
+  },
+  searchableFields: [<span class="str">"title_name"</span>, <span class="str">"description"</span>],
+  softDelete: <span class="num">true</span>,
+  defaultSort: <span class="str">"created_at"</span>,
+  defaultLimit: <span class="num">20</span>
+})
+
+<span class="cmt">// 3. mount the controller</span>
+app.<span class="fn">use</span>(<span class="str">"/books"</span>, booksEntity.controller)
+
+app.<span class="fn">listen</span>(<span class="num">3000</span>)</code></pre>
+        <p>That single mount registers 14+ endpoints. You can also reach every operation programmatically via <code>booksEntity.service</code>.</p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">typescript interface extension</h2>
+        <p>Extend <code>BaseEntityDocument</code> and pass it as the generic to get fully typed service methods and event callbacks.</p>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="kw">interface</span> BookDocument <span class="kw">extends</span> BaseEntityDocument {
+  isbn:      <span class="kw">string</span>
+  pageCount: <span class="kw">number</span>
+  libraryId: <span class="kw">string</span>
+}
+
+<span class="kw">const</span> booksEntity = <span class="kw">new</span> <span class="fn">MetaEntity</span>&lt;BookDocument&gt;(<span class="str">"books"</span>, { ... })
+
+<span class="cmt">// service is IMetaService&lt;BookDocument&gt;</span>
+<span class="kw">const</span> book = <span class="kw">await</span> booksEntity.service.<span class="fn">findById</span>(id)
+<span class="cmt">// book is BookDocument | null</span></code></pre>
+        <div class="section-divider"></div>
+        <h2 class="section-title">entity options reference</h2>
+        <table class="doc-table">
+          <thead><tr><th>option</th><th>type</th><th>default</th><th>description</th></tr></thead>
+          <tbody id="entity-options-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ENTITY -->
+    <div class="page" id="page-entity">
+      <div class="doc-section">
+        <h1 class="page-title">entity</h1>
+        <p class="lead">MetaEntity is the single constructor. It validates the MongoDB connection, compiles the Mongoose schema, creates the service and controller, and exposes the event emitter.</p>
+        <div class="notice"><strong>Connection guard.</strong> MetaEntity throws immediately if mongoose.connection.readyState is 0 (disconnected). Always call mongoose.connect() before constructing entity instances.</div>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="kw">const</span> entity = <span class="kw">new</span> <span class="fn">MetaEntity</span>(name: <span class="kw">string</span>, options: MetaEntityOptions)
+
+<span class="cmt">// exposed properties</span>
+entity.entityName  <span class="cmt">// string</span>
+entity.model       <span class="cmt">// Mongoose Model&lt;T&gt;</span>
+entity.service     <span class="cmt">// IMetaService&lt;T&gt;</span>
+entity.controller  <span class="cmt">// Express Router</span>
+entity.nestedOps   <span class="cmt">// NestedOpsService&lt;T&gt;</span>
+
+<span class="cmt">// methods</span>
+entity.<span class="fn">trigger</span>(events, callback)
+entity.<span class="fn">intercept</span>(action, callback)
+entity.<span class="fn">nested</span>(id, payload)
+entity.<span class="fn">nestedBatch</span>(id, payloads)</code></pre>
+        <div class="section-divider"></div>
+        <h2 class="section-title">additionalFields</h2>
+        <p>Declare extra schema fields using Mongoose field definition syntax. The base fields are always present and cannot be overridden.</p>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="kw">const</span> profileEntity = <span class="kw">new</span> <span class="fn">MetaEntity</span>(<span class="str">"profiles"</span>, {
+  additionalFields: {
+    userId:       { type: String, required: <span class="num">true</span>, unique: <span class="num">true</span> },
+    bio:          { type: String, default: <span class="num">null</span> },
+    rating_average: { type: Number, min: <span class="num">0</span>, max: <span class="num">5</span>, default: <span class="num">0</span> },
+    is_vetted:    { type: Boolean, default: <span class="num">false</span> },
+    services:     { type: Array, default: [] },
+    personal_information: { type: Object, default: {} }
+  }
+})</code></pre>
+      </div>
+    </div>
+
+    <!-- SERVICE -->
+    <div class="page" id="page-service">
+      <div class="doc-section">
+        <h1 class="page-title">service</h1>
+        <p class="lead">The service layer exposes every data operation as an async method. Accessing <code>entity.service</code> gives you the same logic that powers the HTTP controller, usable directly in your business code.</p>
+        <div id="service-methods-list"></div>
+      </div>
+    </div>
+
+    <!-- ENDPOINTS -->
+    <div class="page" id="page-endpoints">
+      <div class="doc-section">
+        <h1 class="page-title">endpoints</h1>
+        <p class="lead" id="endpoints-base-note"></p>
+        <div id="endpoint-groups"></div>
+      </div>
+    </div>
+
+    <!-- EVENTS -->
+    <div class="page" id="page-events">
+      <div class="doc-section">
+        <h1 class="page-title">events</h1>
+        <p class="lead" id="events-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">event types</h2>
+        <div id="events-types-list"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">callback nullability</h2>
+        <p id="events-nullability-text"></p>
+        <div id="events-nullability-table" style="margin-top: var(--sp-md)"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">examples</h2>
+        <div id="events-examples"></div>
+      </div>
+    </div>
+
+    <!-- INTERCEPTORS -->
+    <div class="page" id="page-interceptors">
+      <div class="doc-section">
+        <h1 class="page-title">interceptors</h1>
+        <p class="lead" id="interceptors-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">action types</h2>
+        <div id="interceptors-actions"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">notes</h2>
+        <ul id="interceptors-notes" style="padding-left: 20px; color: var(--body); font-size: 14px; line-height: 2;"></ul>
+        <div class="section-divider"></div>
+        <h2 class="section-title">field resolution per route</h2>
+        <p>When a field-targeted interceptor pattern like <code>update.provider_id</code> is registered, the field name is extracted from the request differently depending on which route is hit.</p>
+        <div id="interceptors-field-resolution"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">examples</h2>
+        <div id="interceptors-examples"></div>
+      </div>
+    </div>
+
+    <!-- NESTED OPS -->
+    <div class="page" id="page-nested">
+      <div class="doc-section">
+        <h1 class="page-title">nested operations</h1>
+        <p class="lead" id="nested-intro"></p>
+        <div class="notice" id="nested-mmid-notice"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">operators</h2>
+        <div id="nested-ops-list"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">usage examples</h2>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="cmt">// set a nested object property</span>
+<span class="kw">await</span> profileEntity.<span class="fn">nested</span>(id, {
+  field:     <span class="str">"personal_information.email"</span>,
+  operation: <span class="str">"set"</span>,
+  value:     <span class="str">"new@email.com"</span>
+})
+
+<span class="cmt">// update a specific services[] item by _mmid</span>
+<span class="kw">await</span> profileEntity.<span class="fn">nested</span>(id, {
+  field:     <span class="str">"services"</span>,
+  operation: <span class="str">"patch_item"</span>,
+  value:     { _mmid: <span class="str">"mmid-cleaning"</span>, category: <span class="str">"Premium Cleaning"</span> }
+})
+
+<span class="cmt">// remove a service by _mmid</span>
+<span class="kw">await</span> profileEntity.<span class="fn">nested</span>(id, {
+  field:     <span class="str">"services"</span>,
+  operation: <span class="str">"pull_id"</span>,
+  value:     <span class="str">"mmid-laundry"</span>
+})
+
+<span class="cmt">// batch - applied in minimum round-trips</span>
+<span class="kw">await</span> profileEntity.<span class="fn">nestedBatch</span>(id, [
+  { field: <span class="str">"rating_average"</span>,             operation: <span class="str">"increment"</span>, value: <span class="num">0.5</span> },
+  { field: <span class="str">"tags"</span>,                        operation: <span class="str">"push"</span>,      value: <span class="str">"verified"</span> },
+  { field: <span class="str">"personal_information.phone"</span>,  operation: <span class="str">"set"</span>,       value: <span class="str">"08012345678"</span> }
+])</code></pre>
+      </div>
+    </div>
+
+    <!-- RELATIONS -->
+    <div class="page" id="page-relations">
+      <div class="doc-section">
+        <h1 class="page-title">relations</h1>
+        <p class="lead" id="relations-intro"></p>
+        <div id="relations-types"></div>
+      </div>
+    </div>
+
+    <!-- VALIDATION -->
+    <div class="page" id="page-validation">
+      <div class="doc-section">
+        <h1 class="page-title">validation</h1>
+        <p class="lead" id="validation-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">schema setup</h2>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+        <pre id="validation-example-pre"><code></code></pre>
+        <div class="section-divider"></div>
+        <h2 class="section-title">options</h2>
+        <table class="doc-table">
+          <thead><tr><th>option</th><th>description</th></tr></thead>
+          <tbody>
+            <tr><td>createSchema</td><td>Joi schema map for create. Required constraints are enforced.</td></tr>
+            <tr><td>updateSchema</td><td>Joi schema map for update. Defaults to createSchema with all keys optional.</td></tr>
+            <tr><td>createValidationOptions</td><td>Any Joi.ValidationOptions. Default: { abortEarly: false, allowUnknown: true }.</td></tr>
+            <tr><td>updateValidationOptions</td><td>Same as above, for update calls.</td></tr>
+            <tr><td>skipValidation</td><td>Pass { skipValidation: true } to service.create() or service.update() to bypass Joi entirely.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TYPESCRIPT -->
+    <div class="page" id="page-typescript">
+      <div class="doc-section">
+        <h1 class="page-title">TypeScript</h1>
+        <p class="lead" id="ts-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">document extension</h2>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+        <pre id="ts-example-pre"><code></code></pre>
+        <div class="section-divider"></div>
+        <h2 class="section-title">key types exported</h2>
+        <table class="doc-table">
+          <thead><tr><th>type</th><th>description</th></tr></thead>
+          <tbody>
+            <tr><td>MetaEntity&lt;T&gt;</td><td>The main entity class.</td></tr>
+            <tr><td>IMetaService&lt;T&gt;</td><td>Service interface. All methods typed against T.</td></tr>
+            <tr><td>BaseEntityDocument</td><td>Base document shape with all injected fields.</td></tr>
+            <tr><td>EventPath&lt;T&gt;</td><td>Union of all valid event strings inferred from T's shape.</td></tr>
+            <tr><td>CallbackForEvent&lt;T, E&gt;</td><td>Resolves correct callback nullability from the event string E.</td></tr>
+            <tr><td>UpdateEventCallback&lt;T&gt;</td><td>Both whatWas and whatIs are non-null Partial&lt;T&gt;.</td></tr>
+            <tr><td>CreateEventCallback&lt;T&gt;</td><td>whatWas and whatIs are null. Entity is T.</td></tr>
+            <tr><td>DeleteEventCallback&lt;T&gt;</td><td>whatWas is non-null Partial&lt;T&gt;. whatIs is null.</td></tr>
+            <tr><td>NestedOpPayload</td><td>{ field, operation, value } for nested operations.</td></tr>
+            <tr><td>QueryOptions</td><td>Pagination, filter, sort, projection options.</td></tr>
+            <tr><td>PaginatedResult&lt;T&gt;</td><td>{ data: T[], pagination: { total, page, ... } }.</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+        <h2 class="section-title">event path inference</h2>
+        <p id="ts-event-paths-text"></p>
+        <div class="pre-header"><span class="lang">typescript</span><button class="copy-code-btn" onclick="copyBlock(this)"><i class="fa-regular fa-copy"></i> copy</button></div>
+<pre><code><span class="cmt">// EventPath&lt;BookDocument&gt; produces a union including:</span>
+<span class="cmt">//   "create" | "update" | "delete" | "restore"</span>
+<span class="cmt">//   "update.isbn" | "update.pageCount" | "update.libraryId"</span>
+<span class="cmt">//   "update.extra_data" | "update.extra_data[*]"</span>
+
+booksEntity.<span class="fn">trigger</span>([<span class="str">"update.isbn"</span>], (whatWas, whatIs, book) =&gt; {
+  <span class="cmt">// whatWas: Partial&lt;BookDocument&gt;  -- no null check needed</span>
+  <span class="cmt">// whatIs:  Partial&lt;BookDocument&gt;  -- no null check needed</span>
+  console.<span class="fn">log</span>(whatWas.isbn, <span class="str">"=&gt;"</span>, whatIs.isbn)
+})</code></pre>
+      </div>
+    </div>
+
+    <!-- APPENDDATA -->
+    <div class="page" id="page-appenddata">
+      <div class="doc-section">
+        <h1 class="page-title">res.appendData()</h1>
+        <p class="lead" id="appenddata-intro"></p>
+        <div class="notice" id="appenddata-merge-rule"></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">example</h2>
+        <div class="example-block">
+          <div class="example-label"><i class="fa-solid fa-circle-dot"></i> interceptor injects user context</div>
+          <pre id="appenddata-example-pre"><code></code></pre>
+        </div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">notes</h2>
+        <table class="doc-table">
+          <thead><tr><th>detail</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>injection</td><td>appendData is available on res inside every interceptor. No setup required.</td></tr>
+            <tr><td>merging</td><td>Multiple res.appendData() calls in the same request are merged. Later keys overwrite earlier ones.</td></tr>
+            <tr><td>data is object</td><td>Payload is spread directly into response.data.</td></tr>
+            <tr><td>data is array or primitive</td><td>Response is wrapped: { data: original, ...appendedPayload }.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- APPEND POPULATION -->
+    <div class="page" id="page-append">
+      <div class="doc-section">
+        <h1 class="page-title">append population</h1>
+        <p class="lead" id="append-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title">directive syntax</h2>
+        <p id="append-syntax-text" style="margin-bottom:var(--sp-sm)"></p>
+        <table class="doc-table">
+          <thead><tr><th>directive</th><th>collection</th><th>localField</th><th>result key</th></tr></thead>
+          <tbody>
+            <tr><td>Library-libraryId</td><td>Library</td><td>libraryId</td><td>library</td></tr>
+            <tr><td>user-ownedBy</td><td>user</td><td>ownedBy</td><td>user</td></tr>
+            <tr><td>library</td><td>library</td><td>libraryId (default)</td><td>library</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+        <h2 class="section-title">via HTTP</h2>
+        <div class="example-block">
+          <div class="example-label"><i class="fa-solid fa-network-wired"></i> query param</div>
+          <pre id="append-http-pre"><code></code></pre>
+        </div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">via service</h2>
+        <div class="example-block">
+          <div class="example-label"><i class="fa-solid fa-code"></i> service option</div>
+          <pre id="append-service-pre"><code></code></pre>
+        </div>
+        <div class="section-divider"></div>
+        <h2 class="section-title">notes</h2>
+        <table class="doc-table">
+          <thead><tr><th>detail</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>N+1 prevention</td><td id="append-resolution-text"></td></tr>
+            <tr><td>non-MetaEntity collections</td><td id="append-nonmeta-text"></td></tr>
+            <tr><td>missing related doc</td><td>If no matching document is found the key is set to null.</td></tr>
+            <tr><td>unknown collection</td><td>If the collection name does not match any model the key is set to null.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+
+    <!-- ANALYSIS -->
+    <div class="page" id="page-analysis">
+      <div class="doc-section">
+        <h1 class="page-title">analysis</h1>
+        <p class="lead" id="analysis-intro"></p>
+
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-sliders"></i> common options</h2>
+        <div class="doc-table-wrap">
+          <table class="doc-table" id="analysis-options-table">
+            <thead><tr><th>option</th><th>type</th><th>note</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> analysis types</h2>
+        <div id="analysis-types-list"></div>
+
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-bell"></i> thresholds</h2>
+        <p id="analysis-threshold-intro"></p>
+        <div class="doc-table-wrap" style="margin-top:var(--sp-sm)">
+          <table class="doc-table" id="analysis-threshold-table">
+            <thead><tr><th>field</th><th>note</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div style="margin-top:var(--sp-sm)">
+          <div class="param-section-label">threshold events</div>
+          <div id="analysis-threshold-events" style="display:flex;flex-wrap:wrap;gap:var(--sp-xxs);margin-top:var(--sp-xxs)"></div>
+        </div>
+        <div class="example-block" style="margin-top:var(--sp-md)">
+          <div class="example-label"><i class="fa-solid fa-circle-dot"></i> threshold example</div>
+          <pre id="analysis-threshold-example"><code></code></pre>
+        </div>
+
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-network-wired"></i> HTTP endpoints</h2>
+        <p id="analysis-http-intro"></p>
+        <div class="example-block" style="margin-top:var(--sp-sm)">
+          <div class="example-label"><i class="fa-solid fa-arrow-right"></i> GET examples</div>
+          <pre id="analysis-http-get"><code></code></pre>
+        </div>
+        <div class="example-block" style="margin-top:var(--sp-sm)">
+          <div class="example-label"><i class="fa-solid fa-arrow-right"></i> POST with body</div>
+          <pre id="analysis-http-post"><code></code></pre>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- POPULATION -->
+    <div class="page" id="page-population">
+      <div class="doc-section">
+        <h1 class="page-title">schema-level population</h1>
+        <p class="lead" id="population-intro"></p>
+        <div class="notice"><strong>Format.</strong> <span id="population-format"></span></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-sliders"></i> options</h2>
+        <div class="doc-table-wrap"><table class="doc-table" id="population-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> entity setup and usage</div><pre id="population-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="population-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- FIELD POLICY -->
+    <div class="page" id="page-fieldpolicy">
+      <div class="doc-section">
+        <h1 class="page-title">field policy</h1>
+        <p class="lead" id="fieldpolicy-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-eye-slash"></i> read guard</h2>
+        <p id="fieldpolicy-read"></p>
+        <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-pen-to-square"></i> write guard</h2>
+        <p id="fieldpolicy-write"></p>
+        <p id="fieldpolicy-strict" style="margin-top:var(--sp-xxs)"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> fieldPolicy definition</div><pre id="fieldpolicy-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <p id="fieldpolicy-servicefor-note"></p>
+        <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="fieldpolicy-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- SCOPED SERVICE -->
+    <div class="page" id="page-scopedservice">
+      <div class="doc-section">
+        <h1 class="page-title">serviceFor()</h1>
+        <p class="lead" id="scopedservice-intro"></p>
+        <div class="notice"><code id="scopedservice-signature"></code></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-sliders"></i> scopedService options</h2>
+        <div class="doc-table-wrap"><table class="doc-table" id="scopedservice-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> request-scoped usage</div><pre id="scopedservice-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="scopedservice-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- AUDIT LOG -->
+    <div class="page" id="page-auditlog">
+      <div class="doc-section">
+        <h1 class="page-title">audit log</h1>
+        <p class="lead" id="auditlog-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-sliders"></i> options</h2>
+        <div class="doc-table-wrap"><table class="doc-table" id="auditlog-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-file-lines"></i> audit record shape</h2>
+        <div class="notice"><code id="auditlog-record"></code></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> setup and history query</div><pre id="auditlog-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="auditlog-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- VIRTUALS -->
+    <div class="page" id="page-virtuals">
+      <div class="doc-section">
+        <h1 class="page-title">virtual fields</h1>
+        <p class="lead" id="virtuals-intro"></p>
+        <div class="notice"><strong>Format.</strong> <span id="virtuals-format"></span></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> computed fields on read</div><pre id="virtuals-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="virtuals-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- MIGRATIONS -->
+    <div class="page" id="page-migrations">
+      <div class="doc-section">
+        <h1 class="page-title">schema migrations</h1>
+        <p class="lead" id="migrations-intro"></p>
+        <div class="notice"><strong>Format.</strong> <span id="migrations-format"></span></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-tag"></i> __schemaVersion</h2>
+        <p id="migrations-version"></p>
+        <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-rotate"></i> execution</h2>
+        <p id="migrations-execution"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> multi-version migration</div><pre id="migrations-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="migrations-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- WEBHOOKS -->
+    <div class="page" id="page-webhooks">
+      <div class="doc-section">
+        <h1 class="page-title">webhooks</h1>
+        <p class="lead" id="webhooks-intro"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-sliders"></i> config options</h2>
+        <div class="doc-table-wrap"><table class="doc-table" id="webhooks-options-table"><thead><tr><th>field</th><th>note</th></tr></thead><tbody></tbody></table></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-file-code"></i> payload shape</h2>
+        <div class="notice"><code id="webhooks-payload"></code></div>
+        <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-lock"></i> signature</h2>
+        <p id="webhooks-signature"></p>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> example</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> setup and receiver verification</div><pre id="webhooks-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="webhooks-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+    <!-- SERIALISER -->
+    <div class="page" id="page-serialiser">
+      <div class="doc-section">
+        <h1 class="page-title">serialiser</h1>
+        <p class="lead" id="serialiser-intro"></p>
+        <div class="notice"><strong>Signature.</strong> <code id="serialiser-signature"></code></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-code"></i> examples</h2>
+        <div class="example-block"><div class="example-label"><i class="fa-solid fa-circle-dot"></i> transform and reshape response</div><pre id="serialiser-example"><code></code></pre></div>
+        <div class="section-divider"></div>
+        <h2 class="section-title"><i class="fa-solid fa-circle-info"></i> scope</h2>
+        <p id="serialiser-scope"></p>
+        <h2 class="section-title" style="margin-top:var(--sp-md)"><i class="fa-solid fa-circle-info"></i> notes</h2>
+        <ul id="serialiser-notes" style="padding-left:20px;color:var(--body);font-size:14px;line-height:2;"></ul>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── data ─────────────────────────────────────────────────────────────────────
+let CORE = null, ENDPOINTS = null, REFERENCE = null;
+
+const BASE_FIELDS = [
+  { field: "uuid",               type: "string", default: "auto (uuidv4)", note: "Stable public identifier. Prefer this over _id in application code." },
+  { field: "slug",               type: "string", default: "auto (from title_name)", note: "URL-safe slug. Regenerated automatically when title_name changes." },
+  { field: "status",             type: "string", default: "active",         note: "active, inactive, or archived." },
+  { field: "deleted_at",         type: "Date",   default: "null",           note: "Set on soft delete. Null means the record is live." },
+  { field: "extra_data",         type: "any[]",  default: "[]",             note: "Schema-less array. Accepts any structure." },
+  { field: "meta_data",          type: "any[]",  default: "[]",             note: "Schema-less array. Accepts any structure." },
+  { field: "title_name",         type: "string", default: "null",           note: "" },
+  { field: "description",        type: "string", default: "null",           note: "" },
+  { field: "owned_by",           type: "string", default: "null",           note: "UUID of the owning entity." },
+  { field: "created_by",         type: "string", default: "null",           note: "" },
+  { field: "updated_by",         type: "string", default: "null",           note: "" },
+  { field: "added_by",           type: "string", default: "null",           note: "" },
+  { field: "meta_key",           type: "string", default: "null",           note: "" },
+  { field: "meta_value",         type: "string", default: "null",           note: "" },
+  { field: "parent_entity",      type: "string", default: "null",           note: "" },
+  { field: "parent_entity_type", type: "string", default: "null",           note: "" },
+  { field: "entity_featured_url",type: "string", default: "null",           note: "" },
+  { field: "created_at",         type: "Date",   default: "auto",           note: "Mongoose timestamps." },
+  { field: "updated_at",         type: "Date",   default: "auto",           note: "Mongoose timestamps." },
+];
+
+const ENTITY_OPTIONS = [
+  { option: "additionalFields",        type: "SchemaFields",       default: "{}",      desc: "Extra Mongoose field definitions. Same syntax as a Mongoose schema object." },
+  { option: "createSchema",            type: "JoiSchemaMap",       default: "none",    desc: "Joi schema for create validation. Keys map to Joi validators." },
+  { option: "updateSchema",            type: "JoiSchemaMap",       default: "derived", desc: "Joi schema for update. Defaults to createSchema with all keys optional." },
+  { option: "createValidationOptions", type: "Joi.ValidationOptions", default: "see docs", desc: "Options passed to Joi on create. Default: abortEarly false, allowUnknown true." },
+  { option: "updateValidationOptions", type: "Joi.ValidationOptions", default: "see docs", desc: "Options passed to Joi on update." },
+  { option: "softDelete",              type: "boolean",            default: "true",    desc: "When true, deletes set deleted_at instead of removing the document." },
+  { option: "searchableFields",        type: "string[]",           default: "[]",      desc: "Fields used by the search endpoint/method for regex matching." },
+  { option: "defaultSort",             type: "string",             default: "created_at", desc: "Default sort field for all list queries." },
+  { option: "defaultOrder",            type: "asc|desc",           default: "desc",    desc: "Default sort direction." },
+  { option: "defaultLimit",            type: "number",             default: "20",      desc: "Default page size. Hard cap at 500." },
+  { option: "parents",                 type: "RelationConfig[]",   default: "[]",      desc: "Parent relation declarations. Injects required FK fields." },
+  { option: "sisters",                 type: "RelationConfig[]",   default: "[]",      desc: "Sister relation declarations. Injects required FK fields." },
+  { option: "children",                type: "ChildEntityConfig[]","default": "[]",    desc: "Child entity declarations. Used by withChildren / GET /:id/children." },
+  { option: "collectionName",          type: "string",             default: "entity name", desc: "Override the MongoDB collection name." },
+  { option: "timestamps",              type: "boolean",            default: "true",    desc: "When true, adds created_at and updated_at via Mongoose timestamps." },
+];
+
+const SERVICE_METHODS = [
+  { method: "all(options?)",                  returns: "PaginatedResult<T>",  desc: "Paginated list of all non-deleted records. Accepts full QueryOptions." },
+  { method: "findById(id, options?)",         returns: "T | null",            desc: "Fetch by uuid or _id. Returns null if not found or soft-deleted." },
+  { method: "findOne(filter, options?)",      returns: "T | null",            desc: "Fetch the first document matching the filter object." },
+  { method: "findBy(field, value, options?)", returns: "PaginatedResult<T>",  desc: "Paginated list where field === value." },
+  { method: "search(query, options?)",        returns: "PaginatedResult<T>",  desc: "Case-insensitive regex search across searchableFields." },
+  { method: "create(data, options?)",         returns: "T",                   desc: "Insert one document. Runs Joi validation unless skipValidation is set." },
+  { method: "createMany(data[], options?)",   returns: "T[]",                 desc: "Bulk insert. Validates every item before any insert." },
+  { method: "update(id, data, options?)",     returns: "T | null",            desc: "Shallow merge update. Fires update events per changed field." },
+  { method: "updateBy(filter, data, opts?)",  returns: "T[]",                 desc: "Update all documents matching the filter." },
+  { method: "updateField(id, field, value)",  returns: "T | null",            desc: "Update a single dot-notation field path." },
+  { method: "delete(id, options?)",           returns: "boolean",             desc: "Soft delete by default. Pass { soft: false } for hard delete." },
+  { method: "deleteBy(filter, options?)",     returns: "number",              desc: "Delete all documents matching the filter. Returns count." },
+  { method: "restore(id)",                    returns: "T | null",            desc: "Restore a soft-deleted document." },
+  { method: "count(filter?)",                 returns: "number",              desc: "Count non-deleted documents, with optional filter." },
+  { method: "exists(filter)",                 returns: "boolean",             desc: "Returns true if at least one matching non-deleted document exists." },
+  { method: "withChildren(id, options?)",     returns: "T | null",            desc: "Fetch a document with registered child entities embedded as paginated sub-collections." },
+  { method: "validate(data, mode)",           returns: "ValidationResult",    desc: "Run Joi validation without inserting. mode is 'create' or 'update'. Returns { valid, errors }." },
+];
+
+// ── routing ───────────────────────────────────────────────────────────────────
+function getRoute() {
+  const hash = location.hash.replace('#', '') || 'overview';
+  return hash;
+}
+
+function navigate(route) {
+  history.pushState(null, '', '#' + route);
+  renderRoute(route);
+}
+
+function renderRoute(route) {
+  // hide all pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-sub-item').forEach(n => n.classList.remove('active'));
+
+  // special: endpoint sub-routes
+  const epMatch = route.match(/^endpoint-(.+)$/);
+  if (epMatch) {
+    showPage('endpoints');
+    highlightNav('endpoints');
+    scrollToEndpoint(epMatch[1]);
+    return;
+  }
+
+  showPage(route);
+  highlightNav(route);
+  window.scrollTo(0, 0);
+}
+
+function showPage(id) {
+  const el = document.getElementById('page-' + id);
+  if (el) el.classList.add('active');
+}
+
+function highlightNav(id) {
+  document.querySelectorAll(`.nav-item[data-id="${id}"]`).forEach(n => n.classList.add('active'));
+}
+
+function scrollToEndpoint(id) {
+  setTimeout(() => {
+    const el = document.getElementById('ep-' + id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // open the endpoint block
+      const block = el.closest('.endpoint-block');
+      if (block && !block.classList.contains('open')) {
+        block.classList.add('open');
+      }
+    }
+  }, 100);
+}
+
+window.addEventListener('popstate', () => renderRoute(getRoute()));
+
+// ── build nav ─────────────────────────────────────────────────────────────────
+function buildNav(core, endpoints) {
+  const root = document.getElementById('nav-items-root');
+  core.nav.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'nav-item';
+    div.setAttribute('data-id', item.id);
+    div.innerHTML = `<i class="fa-solid ${item.icon}"></i>${item.label}`;
+    div.onclick = () => navigate(item.id);
+    root.appendChild(div);
+  });
+
+  const epNav = document.getElementById('nav-items-endpoints');
+  endpoints.groups.forEach(group => {
+    const label = document.createElement('div');
+    label.className = 'nav-section-label';
+    label.textContent = group.label.toLowerCase();
+    epNav.appendChild(label);
+
+    group.endpoints.forEach(ep => {
+      const a = document.createElement('div');
+      a.className = 'nav-sub-item';
+      a.setAttribute('data-ep', ep.id);
+      const methodWord = ep.method.split('/')[0].trim();
+      a.innerHTML = `<span class="method-badge method-${methodWord}">${methodWord}</span> ${ep.path}`;
+      a.onclick = () => navigate('endpoint-' + ep.id);
+      epNav.appendChild(a);
+    });
+  });
+}
+
+// ── overview page ─────────────────────────────────────────────────────────────
+function buildOverview(core) {
+  document.getElementById('hero-title').textContent = core.package.name;
+  document.getElementById('hero-desc').textContent = core.package.description;
+  document.getElementById('pkg-version').textContent = 'v' + core.package.version;
+  document.getElementById('install-cmd').textContent = core.package.install;
+
+  const grid = document.getElementById('concepts-grid');
+  core.concepts.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'concept-item';
+    div.innerHTML = `<div class="ci-title">${c.title}</div><div class="ci-text">${c.summary}</div>`;
+    div.onclick = () => navigate(c.id);
+    grid.appendChild(div);
+  });
+
+  const tbody = document.querySelector('#base-fields-table tbody');
+  BASE_FIELDS.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${f.field}</td><td>${f.type}</td><td>${f.default}</td><td>${f.note}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── quickstart page ───────────────────────────────────────────────────────────
+function buildQuickstart() {
+  const tbody = document.getElementById('entity-options-table');
+  ENTITY_OPTIONS.forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.option}</td><td><code>${o.type}</code></td><td>${o.default}</td><td>${o.desc}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── service page ──────────────────────────────────────────────────────────────
+function buildService() {
+  const list = document.getElementById('service-methods-list');
+  const table = document.createElement('table');
+  table.className = 'doc-table';
+  table.innerHTML = `<thead><tr><th>method</th><th>returns</th><th>description</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  SERVICE_METHODS.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${m.method}</td><td><code>${m.returns}</code></td><td>${m.desc}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  list.appendChild(table);
+}
+
+// ── endpoints page ────────────────────────────────────────────────────────────
+function buildEndpoints(endpoints) {
+  document.getElementById('endpoints-base-note').textContent = endpoints.baseNote;
+
+  const container = document.getElementById('endpoint-groups');
+  endpoints.groups.forEach(group => {
+    const h2 = document.createElement('h2');
+    h2.className = 'section-title';
+    h2.style.marginTop = 'var(--sp-xl)';
+    h2.textContent = group.label;
+    container.appendChild(h2);
+
+    group.endpoints.forEach(ep => {
+      const block = document.createElement('div');
+      const methodWord = ep.method.split('/')[0].trim().toLowerCase();
+      block.className = `endpoint-block method-${methodWord}-accent`;
+      block.id = 'ep-' + ep.id;
+
+      const methodDisplay = ep.method;
+      const methodBadgeClass = `method-${ep.method.split('/')[0].trim()}`;
+
+      block.innerHTML = `
+        <div class="endpoint-header" onclick="toggleEndpoint(this.parentElement)">
+          <span class="method-badge ${methodBadgeClass}">${methodDisplay}</span>
+          <span class="endpoint-path"><span class="prefix">/entity</span>${ep.path}</span>
+          <span class="endpoint-summary">${ep.summary}</span>
+          <i class="fa-solid fa-chevron-right endpoint-chevron"></i>
+        </div>
+        <div class="endpoint-body">
+          <p>${ep.description}</p>
+          ${buildParamsSection('path params', ep.params, 'key', 'note')}
+          ${buildQuerySection(ep.query)}
+          ${buildBodySection(ep.body)}
+          ${buildResponsesSection(ep.responses)}
+          ${ep.example ? buildExampleSection(ep.example) : ''}
+        </div>
+      `;
+      container.appendChild(block);
+    });
+  });
+}
+
+function buildParamsSection(label, items, keyField, noteField) {
+  if (!items || items.length === 0) return '';
+  let html = `<div class="param-section-label">${label}</div><table class="doc-table"><thead><tr><th>param</th><th>note</th></tr></thead><tbody>`;
+  items.forEach(p => {
+    html += `<tr><td>${p[keyField]}</td><td>${p[noteField]}</td></tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function buildQuerySection(items) {
+  if (!items || items.length === 0) return '';
+  let html = `<div class="param-section-label">query params</div><table class="doc-table"><thead><tr><th>param</th><th>type</th><th>default</th><th>note</th></tr></thead><tbody>`;
+  items.forEach(p => {
+    html += `<tr><td>${p.key}</td><td>${p.type || ''}</td><td>${p.default || ''}</td><td>${p.note}</td></tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function buildBodySection(items) {
+  if (!items || items.length === 0) return '';
+  let html = `<div class="param-section-label">body fields</div><table class="doc-table"><thead><tr><th>field</th><th>type</th><th>note</th></tr></thead><tbody>`;
+  items.forEach(p => {
+    const req = p.required ? '<span class="required-pill">required</span>' : '';
+    html += `<tr><td>${p.field}${req}</td><td>${p.type}</td><td>${p.note}</td></tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function buildResponsesSection(items) {
+  if (!items || items.length === 0) return '';
+  let html = `<div class="param-section-label">responses</div>`;
+  items.forEach(r => {
+    const cls = r.code >= 400 ? (r.code === 404 ? 'c404' : 'c400') : (r.code === 201 ? 'c201' : 'c200');
+    html += `<div class="response-row"><span class="response-code ${cls}">${r.code}</span><span class="response-example">${r.example}</span></div>`;
+  });
+  return html;
+}
+
+function buildExampleSection(code) {
+  return `
+    <div class="param-section-label">service usage</div>
+    <div class="example-block">
+      <div class="example-label"><i class="fa-solid fa-code"></i> example</div>
+      <pre><code>${escHtml(code)}</code></pre>
+    </div>
+  `;
+}
+
+function toggleEndpoint(block) {
+  block.classList.toggle('open');
+}
+
+// ── events page ───────────────────────────────────────────────────────────────
+function buildEvents(ref) {
+  const ev = ref.events;
+  document.getElementById('events-intro').textContent = ev.intro;
+
+  const list = document.getElementById('events-types-list');
+  ev.types.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'event-row';
+    div.innerHTML = `
+      <div class="event-pattern">
+        <code>${t.pattern}</code>
+      </div>
+      <p>${t.fires}</p>
+      <div class="event-meta">
+        whatWas <span>${t.whatWas}</span>
+        &nbsp;&nbsp; whatIs <span>${t.whatIs}</span>
+        &nbsp;&nbsp; entity <span>${t.entity}</span>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  document.getElementById('events-nullability-text').textContent = ev.nullability;
+
+  const nullTable = document.getElementById('events-nullability-table');
+  const rows = [
+    { pattern: '"create"',          ww: 'null', wi: 'null' },
+    { pattern: '"update"',          ww: 'Partial<T>',  wi: 'Partial<T>' },
+    { pattern: '"update.fieldName"',ww: 'Partial<T>',  wi: 'Partial<T>' },
+    { pattern: '"delete"',          ww: 'Partial<T>',  wi: 'null' },
+    { pattern: '"restore"',         ww: 'null', wi: 'null' },
+  ];
+  rows.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'null-row';
+    const wwClass = r.ww === 'null' ? 'nullable' : 'nonnull';
+    const wiClass = r.wi === 'null' ? 'nullable' : 'nonnull';
+    d.innerHTML = `
+      <span class="null-pattern"><code>${r.pattern}</code></span>
+      whatWas <span class="null-tag ${wwClass}">${r.ww}</span>
+      whatIs <span class="null-tag ${wiClass}">${r.wi}</span>
+    `;
+    nullTable.appendChild(d);
+  });
+
+  const exDiv = document.getElementById('events-examples');
+  ev.examples.forEach(ex => {
+    const block = document.createElement('div');
+    block.className = 'example-block';
+    block.style.marginBottom = 'var(--sp-md)';
+    block.innerHTML = `
+      <div class="example-label"><i class="fa-solid fa-circle-dot"></i> ${ex.label}</div>
+      <pre><code>${escHtml(ex.code)}</code></pre>
+    `;
+    exDiv.appendChild(block);
+  });
+}
+
+// ── interceptors page ─────────────────────────────────────────────────────────
+function buildInterceptors(ref) {
+  const ic = ref.interceptors;
+  document.getElementById('interceptors-intro').textContent = ic.intro;
+
+  const actDiv = document.getElementById('interceptors-actions');
+  const badges = ic.actions.map(a =>
+    `<code style="margin-right:8px;margin-bottom:8px;display:inline-block;">${a}</code>`
+  ).join('');
+  actDiv.innerHTML = `<p>Valid action strings:</p><div style="margin-top:var(--sp-xs)">${badges}</div>`;
+
+  const ul = document.getElementById('interceptors-notes');
+  ic.notes.forEach(n => {
+    const li = document.createElement('li');
+    li.textContent = n;
+    ul.appendChild(li);
+  });
+
+  // field resolution table
+  if (ic.fieldResolution) {
+    const frDiv = document.getElementById('interceptors-field-resolution');
+    const tbl = document.createElement('table');
+    tbl.className = 'doc-table';
+    tbl.innerHTML = '<thead><tr><th>route</th><th>field source</th></tr></thead>';
+    const tbody = document.createElement('tbody');
+    ic.fieldResolution.routes.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${r.route}</td><td>${r.source}</td>`;
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody);
+    frDiv.appendChild(tbl);
+  }
+
+  const exDiv = document.getElementById('interceptors-examples');
+  ic.examples.forEach(ex => {
+    const block = document.createElement('div');
+    block.className = 'example-block';
+    block.style.marginBottom = 'var(--sp-md)';
+    block.innerHTML = `
+      <div class="example-label"><i class="fa-solid fa-shield-halved"></i> ${ex.label}</div>
+      <pre><code>${escHtml(ex.code)}</code></pre>
+    `;
+    exDiv.appendChild(block);
+  });
+}
+
+// ── nested ops page ───────────────────────────────────────────────────────────
+function buildNested(ref) {
+  const n = ref.nested;
+  document.getElementById('nested-intro').textContent = n.intro;
+  document.getElementById('nested-mmid-notice').innerHTML = `<strong>_mmid.</strong> ${n.mmid}`;
+
+  const list = document.getElementById('nested-ops-list');
+  n.operations.forEach(op => {
+    const row = document.createElement('div');
+    row.className = 'op-row';
+    row.innerHTML = `
+      <div class="op-name">${op.name}</div>
+      <div class="op-operator">${op.operator}</div>
+      <div class="op-desc">
+        <div style="margin-bottom:4px">${op.value}</div>
+        <code style="font-size:11px;color:var(--muted);border-color:var(--hairline-soft)">${op.example}</code>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+}
+
+// ── relations page ────────────────────────────────────────────────────────────
+function buildRelations(ref) {
+  const r = ref.relations;
+  document.getElementById('relations-intro').textContent = r.intro;
+
+  const container = document.getElementById('relations-types');
+  r.types.forEach(t => {
+    const div = document.createElement('div');
+    div.style.marginBottom = 'var(--sp-xl)';
+    div.innerHTML = `
+      <h3 class="sub-title">${t.name}</h3>
+      <p>${t.summary}</p>
+      <div class="example-block" style="margin-top:var(--sp-sm)">
+        <div class="example-label"><i class="fa-solid fa-code"></i> example</div>
+        <pre><code>${escHtml(t.example)}</code></pre>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+// ── validation page ───────────────────────────────────────────────────────────
+function buildValidation(ref) {
+  const v = ref.validation;
+  document.getElementById('validation-intro').textContent = v.intro;
+  document.querySelector('#validation-example-pre code').textContent = v.example;
+}
+
+// ── typescript page ───────────────────────────────────────────────────────────
+function buildTypescript(ref) {
+  const ts = ref.typescript;
+  document.getElementById('ts-intro').textContent = ts.intro;
+  document.querySelector('#ts-example-pre code').textContent = ts.example;
+  document.getElementById('ts-event-paths-text').textContent = ts.eventPaths;
+}
+
+// ── utilities ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function copyInstall() {
+  const cmd = document.getElementById('install-cmd').textContent;
+  navigator.clipboard.writeText(cmd).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+    setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 1500);
+  });
+}
+
+function copyBlock(btn) {
+  const pre = btn.closest('.pre-header').nextElementSibling;
+  const text = pre ? pre.textContent : '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> copied';
+    setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i> copy'; }, 1500);
+  });
+}
+
+// hamburger
+document.getElementById('menu-toggle').onclick = () => {
+  document.getElementById('sidebar').classList.toggle('open');
+};
+
+// ── init ──────────────────────────────────────────────────────────────────────
+function buildAppendData(ref) {
+  const ad = ref.appendData;
+  if (!ad) return;
+  document.getElementById('appenddata-intro').textContent = ad.intro;
+  document.getElementById('appenddata-merge-rule').innerHTML = '<strong>merge rule.</strong> ' + ad.mergeRule;
+  document.querySelector('#appenddata-example-pre code').textContent = ad.example;
+}
+
+function buildAppendPop(ref) {
+  const ap = ref.append;
+  if (!ap) return;
+  document.getElementById('append-intro').textContent = ap.intro;
+  document.getElementById('append-syntax-text').textContent = ap.syntax;
+  document.querySelector('#append-http-pre code').textContent = ap.httpExample;
+  document.querySelector('#append-service-pre code').textContent = ap.serviceExample;
+  document.getElementById('append-resolution-text').textContent = ap.resolution;
+  document.getElementById('append-nonmeta-text').textContent = ap.nonMetaCollections;
+}
+
+function buildAnalysis(ref) {
+  const an = ref.analysis;
+  if (!an) return;
+
+  document.getElementById('analysis-intro').textContent = an.intro;
+
+  // Common options table
+  const optsTbody = document.querySelector('#analysis-options-table tbody');
+  an.commonOptions.forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.option}</td><td><code>${o.type}</code></td><td>${o.note}</td>`;
+    optsTbody.appendChild(tr);
+  });
+
+  // Analysis types
+  const typesList = document.getElementById('analysis-types-list');
+  an.types.forEach(t => {
+    const div = document.createElement('div');
+    div.style.cssText = 'margin:var(--sp-lg) 0;padding-top:var(--sp-sm);border-top:1px solid var(--hairline-soft)';
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:var(--sp-xs);margin-bottom:var(--sp-xxs)">
+        <code style="background:rgba(218,41,28,0.08);border-color:rgba(218,41,28,0.2);color:var(--primary)">${t.id}</code>
+        <span style="font-size:13px;color:var(--body)">${t.summary}</span>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-bottom:var(--sp-xxs)">
+        options: ${t.options.join(' &nbsp; ')}
+      </div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--body-strong);margin-bottom:var(--sp-xs)">
+        returns: ${t.result}
+      </div>
+      <div class="example-block">
+        <div class="example-label"><i class="fa-solid fa-code"></i> example</div>
+        <pre><code>${escHtml(t.example)}</code></pre>
+      </div>
+    `;
+    typesList.appendChild(div);
+  });
+
+  // Thresholds
+  document.getElementById('analysis-threshold-intro').textContent = an.thresholds.intro;
+  const tTbody = document.querySelector('#analysis-threshold-table tbody');
+  an.thresholds.fields.forEach(f => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${f.field}</td><td>${f.note}</td>`;
+    tTbody.appendChild(tr);
+  });
+
+  const evDiv = document.getElementById('analysis-threshold-events');
+  an.thresholds.events.forEach(ev => {
+    const span = document.createElement('code');
+    span.style.cssText = 'background:rgba(218,41,28,0.08);border-color:rgba(218,41,28,0.2);color:var(--primary);margin:2px';
+    span.textContent = ev;
+    evDiv.appendChild(span);
+  });
+
+  document.querySelector('#analysis-threshold-example code').textContent = an.thresholds.example;
+
+  // HTTP
+  document.getElementById('analysis-http-intro').textContent = an.http.intro;
+  document.querySelector('#analysis-http-get code').textContent = an.http.getExample;
+  document.querySelector('#analysis-http-post code').textContent = an.http.postExample;
+}
+
+
+function buildFeaturePage(key, ref, mapping) {
+  const data = ref[key];
+  if (!data) return;
+  for (const [elId, dataKey] of Object.entries(mapping)) {
+    const el = document.getElementById(elId);
+    if (!el) continue;
+    const val = data[dataKey];
+    if (val === undefined || val === null) continue;
+    if (Array.isArray(val)) {
+      if (el.tagName === 'UL') {
+        val.forEach(n => { const li = document.createElement('li'); li.textContent = n; el.appendChild(li); });
+      } else if (el.tagName === 'TBODY') {
+        val.forEach(row => {
+          const tr = document.createElement('tr');
+          const keys = Object.keys(row);
+          keys.forEach(k => { const td = document.createElement('td'); td.textContent = row[k]; tr.appendChild(td); });
+          el.appendChild(tr);
+        });
+      }
+    } else if (el.tagName === 'PRE' || (el.tagName === 'CODE' && el.parentElement?.tagName === 'PRE')) {
+      const codeEl = el.tagName === 'PRE' ? el.querySelector('code') : el;
+      if (codeEl) codeEl.textContent = val;
+    } else {
+      el.textContent = val;
+    }
+  }
+}
+
+function buildPopulation(ref) {
+  buildFeaturePage('population', ref, {
+    'population-intro': 'intro',
+    'population-format': 'format',
+    'population-notes': 'notes',
+  });
+  const opts = ref.population?.options || [];
+  const tbody = document.querySelector('#population-options-table tbody');
+  opts.forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+    tbody.appendChild(tr);
+  });
+  const exEl = document.querySelector('#population-example code');
+  if (exEl) exEl.textContent = ref.population?.example || '';
+}
+
+function buildFieldPolicy(ref) {
+  const fp = ref.fieldpolicy;
+  if (!fp) return;
+  document.getElementById('fieldpolicy-intro').textContent = fp.intro;
+  document.getElementById('fieldpolicy-read').textContent = fp.readGuard;
+  document.getElementById('fieldpolicy-write').textContent = fp.writeGuard;
+  document.getElementById('fieldpolicy-strict').textContent = fp.strict;
+  document.getElementById('fieldpolicy-servicefor-note').textContent = fp.serviceFor;
+  const exEl = document.querySelector('#fieldpolicy-example code');
+  if (exEl) exEl.textContent = fp.example;
+  const ul = document.getElementById('fieldpolicy-notes');
+  (fp.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildScopedService(ref) {
+  const ss = ref.scopedservice;
+  if (!ss) return;
+  document.getElementById('scopedservice-intro').textContent = ss.intro;
+  document.getElementById('scopedservice-signature').textContent = ss.signature;
+  const tbody = document.querySelector('#scopedservice-options-table tbody');
+  (ss.options || []).forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+    tbody.appendChild(tr);
+  });
+  const exEl = document.querySelector('#scopedservice-example code');
+  if (exEl) exEl.textContent = ss.example;
+  const ul = document.getElementById('scopedservice-notes');
+  (ss.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildAuditLog(ref) {
+  const al = ref.auditlog;
+  if (!al) return;
+  document.getElementById('auditlog-intro').textContent = al.intro;
+  document.getElementById('auditlog-record').textContent = al.auditRecord;
+  const tbody = document.querySelector('#auditlog-options-table tbody');
+  (al.options || []).forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+    tbody.appendChild(tr);
+  });
+  const exEl = document.querySelector('#auditlog-example code');
+  if (exEl) exEl.textContent = al.example;
+  const ul = document.getElementById('auditlog-notes');
+  (al.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildVirtuals(ref) {
+  const v = ref.virtuals;
+  if (!v) return;
+  document.getElementById('virtuals-intro').textContent = v.intro;
+  document.getElementById('virtuals-format').textContent = v.format;
+  const exEl = document.querySelector('#virtuals-example code');
+  if (exEl) exEl.textContent = v.example;
+  const ul = document.getElementById('virtuals-notes');
+  (v.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildMigrations(ref) {
+  const m = ref.migrations;
+  if (!m) return;
+  document.getElementById('migrations-intro').textContent = m.intro;
+  document.getElementById('migrations-format').textContent = m.format;
+  document.getElementById('migrations-version').textContent = m.schemaVersion;
+  document.getElementById('migrations-execution').textContent = m.execution;
+  const exEl = document.querySelector('#migrations-example code');
+  if (exEl) exEl.textContent = m.example;
+  const ul = document.getElementById('migrations-notes');
+  (m.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildWebhooks(ref) {
+  const w = ref.webhooks;
+  if (!w) return;
+  document.getElementById('webhooks-intro').textContent = w.intro;
+  document.getElementById('webhooks-payload').textContent = w.payload;
+  document.getElementById('webhooks-signature').textContent = w.signature;
+  const tbody = document.querySelector('#webhooks-options-table tbody');
+  (w.options || []).forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.field}</td><td>${o.note}</td>`;
+    tbody.appendChild(tr);
+  });
+  const exEl = document.querySelector('#webhooks-example code');
+  if (exEl) exEl.textContent = w.example;
+  const ul = document.getElementById('webhooks-notes');
+  (w.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+function buildSerialiser(ref) {
+  const s = ref.serialiser;
+  if (!s) return;
+  document.getElementById('serialiser-intro').textContent = s.intro;
+  document.getElementById('serialiser-signature').textContent = s.signature;
+  document.getElementById('serialiser-scope').textContent = s.scope;
+  const exEl = document.querySelector('#serialiser-example code');
+  if (exEl) exEl.textContent = s.example;
+  const ul = document.getElementById('serialiser-notes');
+  (s.notes || []).forEach(n => { const li = document.createElement('li'); li.textContent = n; ul.appendChild(li); });
+}
+
+async function init() {
+  const [coreRes, epRes, refRes] = await Promise.all([
+    fetch('data/core.json'),
+    fetch('data/endpoints.json'),
+    fetch('data/reference.json'),
+  ]);
+  CORE      = await coreRes.json();
+  ENDPOINTS = await epRes.json();
+  REFERENCE = await refRes.json();
+
+  buildNav(CORE, ENDPOINTS);
+  buildOverview(CORE);
+  buildQuickstart();
+  buildService();
+  buildEndpoints(ENDPOINTS);
+  buildEvents(REFERENCE);
+  buildInterceptors(REFERENCE);
+  buildNested(REFERENCE);
+  buildRelations(REFERENCE);
+  buildValidation(REFERENCE);
+  buildTypescript(REFERENCE);
+  buildAppendData(REFERENCE);
+  buildAppendPop(REFERENCE);
+  buildAnalysis(REFERENCE);
+  buildPopulation(REFERENCE);
+  buildFieldPolicy(REFERENCE);
+  buildScopedService(REFERENCE);
+  buildAuditLog(REFERENCE);
+  buildVirtuals(REFERENCE);
+  buildMigrations(REFERENCE);
+  buildWebhooks(REFERENCE);
+  buildSerialiser(REFERENCE);
+
+  renderRoute(getRoute());
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>

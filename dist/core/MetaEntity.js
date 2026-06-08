@@ -10,6 +10,10 @@ const MetaController_1 = require("./MetaController");
 const EventEmitter_1 = require("./EventEmitter");
 const NestedOpsService_1 = require("./NestedOpsService");
 const MetaAnalysisService_1 = require("./MetaAnalysisService");
+const AuditLogService_1 = require("./AuditLogService");
+const WebhookService_1 = require("./WebhookService");
+const FieldPolicyService_1 = require("./FieldPolicyService");
+const ScopedMetaService_1 = require("./ScopedMetaService");
 const SchemaBuilder_1 = require("./SchemaBuilder");
 class MetaEntity {
     constructor(name, options = {}) {
@@ -25,7 +29,23 @@ class MetaEntity {
         this.service = new MetaService_1.MetaService(this.model, options, this.events, name);
         this.nestedOps = new NestedOpsService_1.NestedOpsService(this.model, this.events);
         this.analysis = new MetaAnalysisService_1.MetaAnalysisService(this.model, name, this.events);
-        this._controller = new MetaController_1.MetaController(this.service, this.nestedOps, this.analysis, name, options);
+        // Field policy service
+        this.fieldPolicySvc = options.fieldPolicy
+            ? new FieldPolicyService_1.FieldPolicyService(options.fieldPolicy)
+            : null;
+        // Audit log
+        const auditOpts = options.auditLog === true
+            ? { enabled: true }
+            : options.auditLog || null;
+        this.auditLog = auditOpts?.enabled
+            ? new AuditLogService_1.AuditLogService(name, this.events, auditOpts)
+            : null;
+        // Webhooks — patch emitter first so __lastEvent tag is available
+        if (options.webhooks?.length) {
+            (0, WebhookService_1.patchEmitterForWebhooks)(this.events);
+            new WebhookService_1.WebhookService(name, this.events, options.webhooks);
+        }
+        this._controller = new MetaController_1.MetaController(this.service, this.nestedOps, this.analysis, name, options, this.fieldPolicySvc, this.auditLog);
         this.controller = this._controller.router;
     }
     assertMongooseConnection() {
@@ -60,6 +80,24 @@ class MetaEntity {
      * await booksEntity.analyze({ type: "growth", window: { from: "2026-05-01", to: "2026-05-28" } })
      * await booksEntity.analyze({ type: "sum", field: "amount", window: { from, to } })
      */
+    /**
+     * Returns a service pre-scoped to the caller identified by the request.
+     * Automatically fills created_by, updated_by, added_by.
+     * Enforces field-level read and write policies.
+     */
+    serviceFor(req) {
+        const scopeOpts = this.options.scopedService || {};
+        return new ScopedMetaService_1.ScopedMetaService(this.service, req, this.fieldPolicySvc, scopeOpts);
+    }
+    /**
+     * Fetch audit history for a specific document.
+     * Only available when auditLog is enabled.
+     */
+    async getHistory(entityId, options) {
+        if (!this.auditLog)
+            return { data: [], total: 0 };
+        return this.auditLog.getHistory(entityId, options);
+    }
     async analyze(options) {
         return this.analysis.run(options);
     }

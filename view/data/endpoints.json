@@ -92,6 +92,28 @@
           "example": "const book = await bookService.findById(\"b336ce54-7d69-47fb-93ef-ce1b03d13add\");\n\n// With projection\nconst slim = await bookService.findById(id, {\n  fields: [\"uuid\", \"title_name\", \"status\"]\n});"
         },
         {
+          "id": "get-history",
+          "method": "GET",
+          "path": "/:id/history",
+          "summary": "Retrieve audit history for a specific record.",
+          "description": "Returns paginated audit records for the document. Only available when auditLog is enabled on the entity. Accepts optional event type filter to narrow results to specific events (create, update, delete, restore).",
+          "params": [
+            { "key": "id", "note": "The record uuid or MongoDB _id." }
+          ],
+          "query": [
+            { "key": "limit", "type": "number", "default": "20", "note": "Records per page." },
+            { "key": "page",  "type": "number", "default": "1",  "note": "Page number." },
+            { "key": "event", "type": "string", "default": "",   "note": "Filter by event type: create, update, delete, restore." }
+          ],
+          "body": [],
+          "responses": [
+            { "code": 200, "label": "OK", "example": "{ \"isSuccess\": true, \"data\": { \"data\": [...], \"pagination\": { \"total\": 5, \"page\": 1, \"limit\": 20 } }, \"message\": \"books history retrieved\" }" },
+            { "code": 400, "label": "Audit not enabled", "example": "{ \"isSuccess\": false, \"statusCode\": 400, \"message\": \"Audit log is not enabled for books\" }" },
+            { "code": 404, "label": "Not found", "example": "{ \"isSuccess\": false, \"statusCode\": 404 }" }
+          ],
+          "example": "const history = await booksEntity.getHistory(id, {\n  limit: 20,\n  page: 1,\n  event: 'update'\n});\n// -> { data: AuditRecord[], total: number }"
+        },
+        {
           "id": "get-children",
           "method": "GET",
           "path": "/:id/children",

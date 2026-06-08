@@ -509,5 +509,175 @@
       "getExample": "# Count with filter and window\nGET /jobs/analysis/count?from=2026-05-01&to=2026-05-28&filter[status]=completed\n\n# Growth for a specific provider\nGET /jobs/analysis/growth?from=2026-05-14&to=2026-05-28&filter[provider_id]=uuid-here\n\n# Daily revenue timeseries for income category\nGET /transactions/analysis/timeseries?metric=sum&field=amount&interval=day&filter[category]=income&from=2026-05-01&to=2026-05-28\n\n# Funnel via GET with comma-separated stages\nGET /jobs/analysis/funnel?groupBy=job_status&stages=pending,accepted,in_progress,completed&from=2026-05-01&to=2026-05-28",
       "postExample": "# POST supports larger filter/stages payloads in the body\nPOST /jobs/analysis/funnel\n{\n  \"groupBy\": \"job_status\",\n  \"stages\": [\"pending\", \"accepted\", \"in_progress\", \"completed\"],\n  \"from\": \"2026-05-01\",\n  \"to\": \"2026-05-28\",\n  \"filter\": { \"provider_id\": \"uuid-here\", \"category\": \"income\" },\n  \"threshold_metric\": \"count\",\n  \"threshold_operator\": \"lt\",\n  \"threshold_value\": 10\n}"
     }
+  },
+  "population": {
+    "intro": "Schema-level population declares auto-population at entity initialisation time. Configured relations are hydrated on every fetch without requiring query params. Mark an entry optional:true to require explicit opt-in.",
+    "format": "populate: [{ from: () => otherEntity, localField: 'fieldName', as: 'resultKey', optional: false }]",
+    "options": [
+      {
+        "field": "from",
+        "note": "Lazy reference to a MetaEntity instance or a model name string."
+      },
+      {
+        "field": "localField",
+        "note": "Field on this document whose value is the ID to match in the target collection."
+      },
+      {
+        "field": "as",
+        "note": "Key under which the populated document appears. Defaults to lowercased entity name."
+      },
+      {
+        "field": "optional",
+        "note": "When true the population only runs when the alias is included in opts.populate or ?populate=alias. Default: false."
+      }
+    ],
+    "example": "const booksEntity = new MetaEntity(\"books\", {\n  populate: [\n    // Always populate - no query param needed\n    { from: () => libraryEntity, localField: \"libraryId\", as: \"library\" },\n    // Only populate when explicitly requested\n    { from: () => authorEntity, localField: \"authorId\", as: \"author\", optional: true }\n  ]\n})\n\n// Automatic on every fetch\nconst book = await booksEntity.service.findById(id)\n// book.library is populated automatically\n\n// Optional - must be requested\nconst withAuthor = await booksEntity.service.findById(id, { populate: [\"author\"] })\n// book.author is populated\n\n// HTTP\n// GET /books/:id?populate=author",
+    "notes": [
+      "Non-optional entries run on findById, all, findBy, and search automatically.",
+      "Uses the same batch $in query strategy as append - no N+1 on list responses.",
+      "Compatible with the ?append= query param - both can be used simultaneously.",
+      "The target collection does not need to be a MetaEntity - any compiled Mongoose model works."
+    ]
+  },
+  "fieldpolicy": {
+    "intro": "Field-level access control declared at entity initialisation. Read guards strip fields from responses. Write guards block or silently drop fields from create and update payloads. Nothing else in the ecosystem does this at the entity definition level.",
+    "readGuard": "read: (req) => boolean | Promise<boolean>  \u2014 return false to strip the field from the response.",
+    "writeGuard": "write: (req) => boolean | Promise<boolean>  \u2014 return false to drop (or throw if strict:true) the field from the payload.",
+    "strict": "When strict:true on a write guard, a denied write throws 403 instead of silently dropping the field.",
+    "example": "const profileEntity = new MetaEntity(\"profiles\", {\n  fieldPolicy: {\n    airbnb_access_token: {\n      // Never expose this field to non-admins\n      read: (req) => req.user?.isAdmin === true\n    },\n    is_vetted: {\n      // Only admins can set this field; throw if non-admin tries\n      write: (req) => req.user?.isAdmin === true,\n      strict: true\n    },\n    subscription_tier: {\n      // Silently drop if non-admin tries to set it\n      write: (req) => req.user?.role === \"admin\"\n    }\n  }\n})\n\n// For non-admin request:\n// airbnb_access_token is stripped from every response\n// Attempting to write is_vetted throws 403\n// Attempting to write subscription_tier silently ignores the field",
+    "serviceFor": "Field policies are enforced automatically when using entity.serviceFor(req). When using entity.service directly no request context is available and policies are not applied.",
+    "notes": [
+      "Read policies are evaluated once per list response and applied to all items - not per item.",
+      "Write policies run before Joi validation.",
+      "Async guards are fully supported - the guard function can be async.",
+      "A missing or undefined field in the policy map means no restriction on that field."
+    ]
+  },
+  "scopedservice": {
+    "intro": "entity.serviceFor(req) returns a service instance pre-scoped to the caller identified by the request. It automatically fills created_by, updated_by, and added_by on every create and update, and enforces field-level policies using the request context.",
+    "signature": "entity.serviceFor(req: CustomRequest): IMetaService<T>",
+    "identityFields": "The caller's UUID is extracted from req.user by default. Configure with the scopedService entity option.",
+    "options": [
+      {
+        "field": "userField",
+        "note": "Property on req that holds the user object. Default: 'user'."
+      },
+      {
+        "field": "userIdField",
+        "note": "Property on the user object that holds the UUID. Default: tries uuid, then id, then _id."
+      }
+    ],
+    "example": "// Entity definition\nconst jobEntity = new MetaEntity(\"jobs\", {\n  fieldPolicy: {\n    internal_notes: { read: (req) => req.user?.isAdmin === true }\n  },\n  scopedService: { userField: \"user\", userIdField: \"uuid\" }\n})\n\n// In your Express route handler\napp.post(\"/jobs\", authMiddleware, async (req, res) => {\n  const service = jobEntity.serviceFor(req)\n  // created_by and added_by auto-filled from req.user.uuid\n  // internal_notes stripped from response for non-admin\n  const job = await service.create(req.body)\n  res.json(job)\n})\n\n// On update\napp.patch(\"/jobs/:id\", authMiddleware, async (req, res) => {\n  const service = jobEntity.serviceFor(req)\n  // updated_by auto-filled\n  const job = await service.update(req.params.id, req.body)\n  res.json(job)\n})",
+    "notes": [
+      "serviceFor() is non-destructive - entity.service is unchanged and still available.",
+      "The scoped service implements the full IMetaService interface.",
+      "Field policy read enforcement applies to all read methods including findById, all, search, and withChildren.",
+      "Field policy write enforcement runs on create, createMany, update, updateBy, and updateField."
+    ]
+  },
+  "auditlog": {
+    "intro": "Built-in audit logging. When enabled, every create, update, and delete writes a change record to a {entityName}_history collection automatically. The record includes who changed what, from what value, to what value, and when.",
+    "enable": "Pass auditLog: true for defaults, or auditLog: { enabled: true, ...options } for custom configuration.",
+    "options": [
+      {
+        "field": "enabled",
+        "note": "Must be true to activate."
+      },
+      {
+        "field": "collection",
+        "note": "Override the collection name. Default: {entityName}_history."
+      },
+      {
+        "field": "events",
+        "note": "Which events to log. Default: ['create', 'update', 'delete']."
+      },
+      {
+        "field": "actorField",
+        "note": "Document field used to identify the actor. Default: updated_by, then created_by."
+      }
+    ],
+    "auditRecord": "{ entityName, entityId, event, actorId, whatWas, whatIs, changedFields, timestamp }",
+    "example": "const transactionEntity = new MetaEntity(\"transactions\", {\n  auditLog: {\n    enabled: true,\n    events: [\"create\", \"update\", \"delete\"],\n    collection: \"transaction_audit\",\n    actorField: \"updated_by\"\n  }\n})\n\n// Audit records are written automatically on every mutation\nawait transactionEntity.service.create({ amount: 5000, category: \"income\" })\n// -> writes { event: 'create', entityId: uuid, actorId: '...', whatIs: {...} } to transaction_audit\n\n// Fetch history for a specific document\nconst history = await transactionEntity.getHistory(documentUuid, {\n  limit: 20,\n  page: 1,\n  event: 'update'  // optional filter by event type\n})\n// -> { data: AuditRecord[], total: number }\n\n// HTTP endpoint (always available when auditLog is enabled)\n// GET /:id/history?limit=20&page=1&event=update",
+    "notes": [
+      "Audit log failures never interrupt the main operation - errors are logged to console but swallowed.",
+      "The history endpoint GET /:id/history is automatically mounted on the entity router.",
+      "Audit records are not subject to soft-delete - they persist permanently.",
+      "auditLog: true is shorthand for { enabled: true } with all defaults."
+    ]
+  },
+  "virtuals": {
+    "intro": "Mongoose virtual fields are computed on read and never stored in the database. Declare them at entity initialisation and they appear in every response through the standard toObject() output.",
+    "format": "virtuals: { fieldName: { get() { return computedValue } } }",
+    "example": "const profileEntity = new MetaEntity(\"profiles\", {\n  additionalFields: {\n    first_name: { type: String },\n    last_name:  { type: String },\n    price:      { type: Number, default: 0 },\n    tax_rate:   { type: Number, default: 0.075 },\n  },\n  virtuals: {\n    fullName: {\n      get() { return `${this.first_name} ${this.last_name}` }\n    },\n    priceWithTax: {\n      get() { return this.price * (1 + this.tax_rate) }\n    },\n    isExpired: {\n      get() { return this.expiry_date ? new Date(this.expiry_date) < new Date() : false }\n    }\n  }\n})\n\n// Every fetch returns computed virtuals\nconst profile = await profileEntity.service.findById(id)\n// profile.fullName    -> 'Amaka Osei'\n// profile.priceWithTax -> 5375\n// profile.isExpired   -> false",
+    "notes": [
+      "Virtuals are configured via { get() {...} } object or a plain function shorthand.",
+      "The schema is configured with toObject({ virtuals: true }) and toJSON({ virtuals: true }) automatically.",
+      "Virtuals support setters via a set() method on the definition object.",
+      "Virtual values are not persisted and not searchable via filter queries."
+    ]
+  },
+  "migrations": {
+    "intro": "Schema migrations apply lazy per-document transforms on read when a document's __schemaVersion is below the declared version. Useful when you add required fields or rename fields on an existing collection without a full data migration.",
+    "format": "migrations: [{ version: number, description?: string, up(doc) { return transformedDoc } }]",
+    "schemaVersion": "__schemaVersion is injected automatically into the schema when migrations are declared. It tracks which migrations have been applied to each document.",
+    "execution": "Migrations run lazily on every document read (findById, all, findBy, search). The migrated document is returned in memory - it is not re-saved automatically. To persist migrations, save the returned document or run a background batch.",
+    "example": "const userEntity = new MetaEntity(\"users\", {\n  migrations: [\n    {\n      version: 1,\n      description: \"Rename username to display_name\",\n      up(doc) {\n        if (doc.username && !doc.display_name) {\n          doc.display_name = doc.username\n          delete doc.username\n        }\n        return doc\n      }\n    },\n    {\n      version: 2,\n      description: \"Add default notification preferences\",\n      up(doc) {\n        if (!doc.notifications) {\n          doc.notifications = { email: true, sms: false, push: true }\n        }\n        return doc\n      }\n    }\n  ]\n})\n\n// Old document: { username: 'amaka', __schemaVersion: 0 }\n// After read:   { display_name: 'amaka', notifications: {...}, __schemaVersion: 2 }",
+    "notes": [
+      "Migrations always run in ascending version order regardless of declaration order.",
+      "A document already at the latest version is returned unchanged.",
+      "Migration errors are logged and do not abort the read - the partially migrated document is returned.",
+      "Documents without __schemaVersion are treated as version 0."
+    ]
+  },
+  "webhooks": {
+    "intro": "Outbound webhook delivery triggered by entity events. Registered URLs receive a signed POST request when matching events fire. Uses the same event pattern syntax as trigger().",
+    "format": "webhooks: [{ events: string[], url: string, secret?: string, timeout?: number, retries?: number, headers?: Record<string, string> }]",
+    "options": [
+      {
+        "field": "events",
+        "note": "Event patterns. Same syntax as trigger(). e.g. ['create', 'update.status', 'delete']."
+      },
+      {
+        "field": "url",
+        "note": "Target URL for the POST request."
+      },
+      {
+        "field": "secret",
+        "note": "HMAC secret. When set, every delivery includes X-MetaManager-Signature: sha256=<hmac>."
+      },
+      {
+        "field": "timeout",
+        "note": "Request timeout in milliseconds. Default: 5000."
+      },
+      {
+        "field": "retries",
+        "note": "Retry attempts on failure. Default: 2. Uses 500ms exponential backoff."
+      },
+      {
+        "field": "headers",
+        "note": "Static headers merged into every delivery."
+      }
+    ],
+    "payload": "{ event: string, entity: string, timestamp: string, whatWas: Partial<T>|null, whatIs: Partial<T>|null, data: T }",
+    "signature": "X-MetaManager-Signature: sha256=<hmac-sha256-hex> \u2014 computed over the raw JSON body using the secret.",
+    "example": "const jobEntity = new MetaEntity(\"jobs\", {\n  webhooks: [\n    {\n      events: [\"create\", \"update.job_status\"],\n      url: process.env.WEBHOOK_URL,\n      secret: process.env.WEBHOOK_SECRET,\n      retries: 3,\n      headers: { \"X-Source\": \"miko-api\" }\n    },\n    {\n      events: [\"delete\"],\n      url: process.env.AUDIT_WEBHOOK_URL,\n      timeout: 3000\n    }\n  ]\n})\n\n// Verify the signature in your webhook receiver\nconst crypto = require('crypto')\napp.post('/webhook', (req, res) => {\n  const sig = req.headers['x-metamanager-signature']\n  const expected = 'sha256=' + crypto\n    .createHmac('sha256', process.env.WEBHOOK_SECRET)\n    .update(JSON.stringify(req.body))\n    .digest('hex')\n  if (sig !== expected) return res.status(401).end()\n  // process event\n  res.status(200).end()\n})",
+    "notes": [
+      "Webhook delivery failures never interrupt the main operation.",
+      "Retries use exponential backoff: 500ms, 1000ms.",
+      "Multiple webhook configs can be registered on a single entity.",
+      "All event patterns from trigger() work identically including update.fieldName and update.array[*]."
+    ]
+  },
+  "serialiser": {
+    "intro": "A response serialiser transforms every document before it leaves the controller. It runs after field policy stripping, giving you a final opportunity to reshape, rename, or remove fields from HTTP responses without affecting the service layer.",
+    "signature": "transform(doc: T, req?: CustomRequest): Record<string, unknown> | Promise<Record<string, unknown>>",
+    "example": "const profileEntity = new MetaEntity(\"profiles\", {\n  serialiser: {\n    transform(doc, req) {\n      // Strip internal fields from HTTP responses\n      const { __schemaVersion, __v, internal_token, ...rest } = doc\n\n      // Add computed presentation fields\n      return {\n        ...rest,\n        displayName: [doc.first_name, doc.last_name].filter(Boolean).join(' '),\n        isVerified: Boolean(doc.id_verified && doc.is_vetted),\n      }\n    }\n  }\n})\n\n// Async serialiser with a database lookup\nconst bookEntity = new MetaEntity(\"books\", {\n  serialiser: {\n    async transform(doc, req) {\n      const readCount = await analyticsService.getReadCount(doc.uuid)\n      return { ...doc, readCount, _internalId: undefined }\n    }\n  }\n})",
+    "scope": "The serialiser only applies to HTTP responses through the controller. entity.service calls return unserialised data. Use this intentionally - internal service-to-service calls get the raw document.",
+    "notes": [
+      "Runs on single document responses, list responses, and paginated results.",
+      "The req argument is available for conditional serialisation based on the caller.",
+      "Async serialisers are fully supported.",
+      "Serialiser runs after field policy stripping - both can be combined."
+    ]
   }
 }
