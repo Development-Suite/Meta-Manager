@@ -63,18 +63,10 @@ Every entity document inherits these fields automatically:
 ```ts
 {
   uuid: string;              // auto-generated UUID v4
-  request_id?: string;
-  meta_key?: string;
-  meta_value?: string;
-  data_type?: string;
   title_name?: string;
   description?: string;
-  entity_featured_url?: string;
   extra_data?: unknown[];    // schema-less, accepts anything
-  meta_data?: unknown[];     // schema-less, accepts anything
   status: "active" | "inactive" | "archived";
-  parent_entity_type?: string;
-  parent_entity?: string;
   owned_by?: string;
   added_by?: string;
   created_by?: string;

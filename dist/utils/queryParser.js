@@ -108,6 +108,24 @@ function parseQueryOptions(query) {
             filter[match[1]] = query[key];
         }
     }
+    // Coerce string values to their actual types so
+    // ?filter[is_paid]=true matches boolean true in MongoDB
+    for (const key of Object.keys(filter)) {
+        const val = filter[key];
+        if (typeof val === "string") {
+            if (val === "true")
+                filter[key] = true;
+            else if (val === "false")
+                filter[key] = false;
+            else if (val === "null")
+                filter[key] = null;
+            else if (val === "undefined")
+                filter[key] = undefined;
+            else if (/^-?\d+(\.\d+)?$/.test(val) && !isNaN(Number(val))) {
+                filter[key] = Number(val);
+            }
+        }
+    }
     if (Object.keys(filter).length > 0) {
         opts.filter = filter;
     }

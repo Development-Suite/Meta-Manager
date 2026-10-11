@@ -258,18 +258,10 @@ export interface MetaEntityOptions {
 }
 export interface BaseEntityDocument extends Document {
     uuid: string;
-    request_id?: string;
-    meta_key?: string;
-    meta_value?: string;
-    data_type?: string | null;
     title_name?: string;
     description?: string;
-    entity_featured_url?: string;
     extra_data?: unknown[];
-    meta_data?: unknown[];
     status: "active" | "inactive" | "archived";
-    parent_entity_type?: string | null;
-    parent_entity?: string | null;
     owned_by?: string | null;
     added_by?: string | null;
     created_by?: string | null;

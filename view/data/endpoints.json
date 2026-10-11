@@ -18,7 +18,6 @@
             { "field": "description",  "type": "string",  "required": false, "note": "" },
             { "field": "owned_by",     "type": "string",  "required": false, "note": "UUID of the owning user or entity." },
             { "field": "extra_data",   "type": "any[]",   "required": false, "note": "Schema-less array. Accepts anything." },
-            { "field": "meta_data",    "type": "any[]",   "required": false, "note": "Schema-less array. Accepts anything." },
             { "field": "...fields",    "type": "any",     "required": false, "note": "Any additional fields declared in additionalFields." }
           ],
           "responses": [

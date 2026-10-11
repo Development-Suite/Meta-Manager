@@ -54,7 +54,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title_name\": \"Things Fall Apart\",\n  \"description\": \"A classic novel by Chinua Achebe\",\n  \"owned_by\": \"user-uuid-here\",\n  \"added_by\": \"user-uuid-here\",\n  \"created_by\": \"user-uuid-here\",\n  \"meta_key\": \"featured_book\",\n  \"meta_value\": \"true\",\n  \"extra_data\": [],\n  \"meta_data\": []\n}",
+              "raw": "{\n  \"title_name\": \"Things Fall Apart\",\n  \"description\": \"A classic novel by Chinua Achebe\",\n  \"owned_by\": \"user-uuid-here\",\n  \"added_by\": \"user-uuid-here\",\n  \"created_by\": \"user-uuid-here\",\n  \"extra_data\": []\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -73,7 +73,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"Created\",\n  \"statusCode\": 201,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books created\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"Created\",\n  \"statusCode\": 201,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books created\"\n}"
             },
             {
               "name": "400 Validation Error",
@@ -232,7 +232,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [\n      {\n        \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n        \"title_name\": \"Things Fall Apart\",\n        \"slug\": \"things-fall-apart\",\n        \"description\": \"A classic novel by Chinua Achebe\",\n        \"status\": \"active\",\n        \"extra_data\": [],\n        \"meta_data\": [],\n        \"deleted_at\": null,\n        \"created_at\": \"2026-04-27T10:00:00.000Z\",\n        \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 42,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 3,\n      \"hasNext\": true,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"books records retrieved\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"data\": [\n      {\n        \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n        \"title_name\": \"Things Fall Apart\",\n        \"slug\": \"things-fall-apart\",\n        \"description\": \"A classic novel by Chinua Achebe\",\n        \"status\": \"active\",\n        \"extra_data\": [],\n        \"deleted_at\": null,\n        \"created_at\": \"2026-04-27T10:00:00.000Z\",\n        \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total\": 42,\n      \"page\": 1,\n      \"limit\": 20,\n      \"totalPages\": 3,\n      \"hasNext\": true,\n      \"hasPrev\": false\n    }\n  },\n  \"message\": \"books records retrieved\"\n}"
             }
           ]
         },
@@ -271,7 +271,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books retrieved\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books retrieved\"\n}"
             },
             {
               "name": "404 Not Found",
@@ -469,7 +469,7 @@
                 }
               ]
             },
-            "description": "Find all records where :field equals :value.\n\nChange status/active in the path to any field/value pair:\n  /by/owned_by/user-uuid-here\n  /by/meta_key/featured_book\n  /by/libraryId/lib-uuid-here\n\nReturns a full paginated result. All standard pagination and sort params apply."
+            "description": "Find all records where :field equals :value.\n\nChange status/active in the path to any field/value pair:\n  /by/owned_by/user-uuid-here\n  /by/libraryId/lib-uuid-here\n\nReturns a full paginated result. All standard pagination and sort params apply."
           },
           "response": [
             {
@@ -690,7 +690,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart (Revised Edition)\",\n    \"slug\": \"things-fall-apart-revised-edition\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart (Revised Edition)\",\n    \"slug\": \"things-fall-apart-revised-edition\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
             },
             {
               "name": "400 Validation Error",
@@ -760,7 +760,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"inactive\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"inactive\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books updated\"\n}"
             },
             {
               "name": "404 Not Found",
@@ -807,7 +807,7 @@
                 }
               }
             },
-            "description": "Update a single named field. The field name is in the URL path.\n\nRequest body must be: { \"value\": <newValue> }\n\nSupports dot-notation for nested fields:\n  /field/status                     top-level field\n  /field/extra_data.0.tokenName     first element of extra_data array\n  /field/meta_data.0.price          nested object field\n\nThis is the recommended way to update a specific nested key without sending the entire document."
+            "description": "Update a single named field. The field name is in the URL path.\n\nRequest body must be: { \"value\": <newValue> }\n\nSupports dot-notation for nested fields:\n  /field/status                     top-level field\n  /field/extra_data.0.tokenName     first element of extra_data array\n  /field/extra_data.0.price          nested object field\n\nThis is the recommended way to update a specific nested key without sending the entire document."
           },
           "response": [
             {
@@ -820,7 +820,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books field \\\"status\\\" updated\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books field \\\"status\\\" updated\"\n}"
             },
             {
               "name": "400 Missing value",
@@ -1022,7 +1022,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"meta_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books restored\"\n}"
+              "body": "{\n  \"isSuccess\": true,\n  \"status\": \"OK\",\n  \"statusCode\": 200,\n  \"data\": {\n    \"uuid\": \"b336ce54-7d69-47fb-93ef-ce1b03d13add\",\n    \"title_name\": \"Things Fall Apart\",\n    \"slug\": \"things-fall-apart\",\n    \"description\": \"A classic novel by Chinua Achebe\",\n    \"status\": \"active\",\n    \"extra_data\": [],\n    \"deleted_at\": null,\n    \"created_at\": \"2026-04-27T10:00:00.000Z\",\n    \"updated_at\": \"2026-04-27T10:00:00.000Z\"\n  },\n  \"message\": \"books restored\"\n}"
             },
             {
               "name": "404 Not Found",
